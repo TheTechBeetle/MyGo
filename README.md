@@ -1,0 +1,2 @@
+# MyGo
+My Go experiments
