@@ -4,6 +4,10 @@ go 1.27.2
 
 require github.com/hajimehoshi/ebiten/v2 v2.10.5
 
+require github.com/thetechbeetle/mygo/uiengine v0.0.0
+
+replace github.com/thetechbeetle/mygo/uiengine => ../Uiengine
+
 require (
 	github.com/ebitengine/gomobile v0.0.0-20260820040257-d11f821a26a6 // indirect
 	github.com/ebitengine/hideconsole v1.0.0 // indirect

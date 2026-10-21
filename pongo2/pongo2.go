@@ -8,12 +8,11 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/thetechbeetle/mygo/uiengine"
 	"github.com/hajimehoshi/ebiten/v2"
 	_ "github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	_ "github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	_ "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 var data, _ = os.ReadFile("font.ttf")
@@ -24,16 +23,6 @@ var face = &text.GoTextFace{
 	Source:    src,
 	Size:      48,
 	Direction: text.DirectionLeftToRight,
-}
-
-type uielement struct {
-	X      float32
-	Y      float32
-	Xsize  float32
-	Ysize  float32
-	Border float32
-	Text   string
-	ID     string
 }
 
 type mousetype struct {
@@ -75,7 +64,7 @@ var PlayerPaddle = paddle{
 }
 
 var state bool
-var ui []uielement
+var ui []uiengine.UIElement
 
 var score, topscore, enimofset int
 
@@ -94,7 +83,7 @@ func (g *Game) Update() error {
 	} else {
 		Simulatemenu()
 	}
-	switch SimulateUi() {
+	switch uiengine.SimulateUi(ui) {
 	case "PLY":
 		{
 			state = true
@@ -122,37 +111,13 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func DrawUi(screen *ebiten.Image) {
-	for i := 0; i < len(ui); i++ {
-		vector.StrokeLine(screen, ui[i].X, ui[i].Y, ui[i].X+ui[i].Xsize, ui[i].Y, ui[i].Ysize, color.White, false)
-		vector.StrokeLine(screen, ui[i].X+ui[i].Border, ui[i].Y, ui[i].X+ui[i].Xsize-ui[i].Border, ui[i].Y, ui[i].Ysize-(ui[i].Border*2), color.Black, false)
-		op := &text.DrawOptions{}
-		op.GeoM.Scale(0.3, 0.3)
-		op.GeoM.Translate(float64(ui[i].X+5), float64(ui[i].Y-(ui[i].Ysize*0.5)+5))
-		text.Draw(screen, ui[i].Text, face, op)
-	}
-}
-
-func SimulateUi() (Id string) {
-	if mouse.In {
-		for i := 0; i < len(ui); i++ {
-			if mouse.X > int(ui[i].X) && mouse.X < int(ui[i].X+ui[i].Xsize) {
-				if mouse.Y > int(ui[i].Y-ui[i].Ysize) && mouse.Y < int(ui[i].Y+ui[i].Ysize) {
-					return ui[i].ID
-				}
-			}
-		}
-	}
-	return ""
-}
-
 func (g *Game) Draw(screen *ebiten.Image) {
 	if state {
 		Drawgame(screen)
 	} else {
 		Drawmenu(screen)
 	}
-	DrawUi(screen)
+	uiengine.DrawUi(screen, ui, face)
 }
 
 func (g *Game) Layout(outsideW, outsideH int) (int, int) {
@@ -193,12 +158,12 @@ func Drawgame(screen *ebiten.Image) {
 }
 
 func Simulatemenu() {
-	ui = append(ui, uielement{40, 180, 50, 30, 3, "Play", "PLY"})
-	ui = append(ui, uielement{190, 180, 50, 30, 3, "Quit", "EXT"})
+	uiengine.AddUi(&ui, 40, 180, 50, 30, 3, "Play", "PLY")
+	uiengine.AddUi(&ui, 190, 180, 50, 30, 3, "Quit", "EXT")
 }
 
 func Simulategame() {
-	ui = append(ui, uielement{5, 20, 50, 30, 3, "End", "MNU"})
+	uiengine.AddUi(&ui, 5, 20, 50, 30, 3, "End", "MNU")
 	PlayerPaddle.Y = mouse.Y
 	Ball.X = Ball.X + Ball.Xvel
 	Ball.Y = Ball.Y + Ball.Yvel
