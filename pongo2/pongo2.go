@@ -2,12 +2,11 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"image/color"
-	"log"
 	"math"
 	"math/rand"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	_ "github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -17,10 +16,15 @@ import (
 	_ "github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-//go:embed font.ttf
-var fontData []byte
+var data, _ = os.ReadFile("font.ttf")
+var r = bytes.NewReader(data)
+var src, _ = text.NewGoTextFaceSource(r)
 
-var face *text.GoTextFace
+var face = &text.GoTextFace{
+	Source:    src,
+	Size:      48,
+	Direction: text.DirectionLeftToRight,
+}
 
 type uielement struct {
 	X      float32
@@ -84,10 +88,6 @@ type Game struct {
 func (g *Game) Update() error {
 	mouse.In = ebiten.IsMouseButtonPressed(ebiten.MouseButton0)
 	mouse.X, mouse.Y = ebiten.CursorPosition()
-	if touches := ebiten.AppendTouchIDs(nil); len(touches) > 0 {
-		mouse.X, mouse.Y = ebiten.TouchPosition(touches[0])
-		mouse.In = true
-	}
 	ui = nil
 	if state {
 		Simulategame()
@@ -160,21 +160,9 @@ func (g *Game) Layout(outsideW, outsideH int) (int, int) {
 }
 
 func main() {
-	src, err := text.NewGoTextFaceSource(bytes.NewReader(fontData))
-	if err != nil {
-		log.Fatal(err)
-	}
-	face = &text.GoTextFace{
-		Source:    src,
-		Size:      48,
-		Direction: text.DirectionLeftToRight,
-	}
-
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Pongo")
-	if err := ebiten.RunGame(&Game{}); err != nil {
-		log.Fatal(err)
-	}
+	ebiten.RunGame(&Game{})
 }
 
 func Drawmenu(screen *ebiten.Image) {
