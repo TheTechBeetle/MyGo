@@ -49,7 +49,7 @@ var Ball = Balltype{
 	160,
 	120,
 	2,
-	3,
+	2,
 }
 
 var EnemyPaddle = paddle{
@@ -111,7 +111,7 @@ func (g *Game) Update() error {
 				50,
 				50,
 				2,
-				3,
+				2,
 			}
 			enimofset = rand.Intn(70) - 35
 		}
@@ -212,15 +212,17 @@ func Simulategame() {
 	PlayerPaddle.Y = max(PlayerPaddle.Size/2, PlayerPaddle.Y)
 	EnemyPaddle.Y = max(EnemyPaddle.Size/2, EnemyPaddle.Y)
 
-	if int(Ball.X) > EnemyPaddle.X-10 && int(Ball.X) < EnemyPaddle.X+10 && Ball.Xvel > 0 {
+	if int(Ball.X) > EnemyPaddle.X-5 && int(Ball.X) < EnemyPaddle.X+10 && Ball.Xvel > 0 {
 		if int(Ball.Y) > EnemyPaddle.Y-(EnemyPaddle.Size/2) && int(Ball.Y) < EnemyPaddle.Y+(EnemyPaddle.Size/2) {
 			Ball.Xvel = 0 - math.Abs(Ball.Xvel*1.1)
+			Ball.Yvel = Ball.Yvel + (Ball.Y-float64(EnemyPaddle.Y))/50
 		}
 	}
 
-	if int(Ball.X) > PlayerPaddle.X-10 && int(Ball.X) < PlayerPaddle.X+10 && Ball.Xvel < 0 {
+	if int(Ball.X) > PlayerPaddle.X-20 && int(Ball.X) < PlayerPaddle.X+10 && Ball.Xvel < 0 {
 		if int(Ball.Y) > PlayerPaddle.Y-(PlayerPaddle.Size/2) && int(Ball.Y) < PlayerPaddle.Y+(PlayerPaddle.Size/2) {
 			Ball.Xvel = math.Abs(Ball.Xvel * 1.1)
+			Ball.Yvel = Ball.Yvel + (Ball.Y-float64(PlayerPaddle.Y))/50
 			score++
 			if score > 20 {
 				enimofset = 0
@@ -242,7 +244,7 @@ func Simulategame() {
 			160,
 			120,
 			2,
-			3,
+			2,
 		}
 		score = score + 2
 		enimofset = 0
