@@ -22,6 +22,7 @@ type UIElement struct {
 	Border float32
 	Text   string
 	ID     string
+	Disp   bool
 }
 
 var mouse mousetype
@@ -30,12 +31,14 @@ func DrawUi(screen *ebiten.Image, ui []UIElement, face *text.GoTextFace) {
 	mouse.In = ebiten.IsMouseButtonPressed(ebiten.MouseButton0)
 	mouse.X, mouse.Y = ebiten.CursorPosition()
 	for i := 0; i < len(ui); i++ {
-		vector.StrokeLine(screen, ui[i].X, ui[i].Y, ui[i].X+ui[i].Xsize, ui[i].Y, ui[i].Ysize, color.White, false)
-		vector.StrokeLine(screen, ui[i].X+ui[i].Border, ui[i].Y, ui[i].X+ui[i].Xsize-ui[i].Border, ui[i].Y, ui[i].Ysize-(ui[i].Border*2), color.Black, false)
-		op := &text.DrawOptions{}
-		op.GeoM.Scale(0.3, 0.3)
-		op.GeoM.Translate(float64(ui[i].X+5), float64(ui[i].Y-(ui[i].Ysize*0.5)+5))
-		text.Draw(screen, ui[i].Text, face, op)
+		if ui[i].Disp {
+			vector.StrokeLine(screen, ui[i].X, ui[i].Y, ui[i].X+ui[i].Xsize, ui[i].Y, ui[i].Ysize, color.White, false)
+			vector.StrokeLine(screen, ui[i].X+ui[i].Border, ui[i].Y, ui[i].X+ui[i].Xsize-ui[i].Border, ui[i].Y, ui[i].Ysize-(ui[i].Border*2), color.Black, false)
+			op := &text.DrawOptions{}
+			op.GeoM.Scale(0.3, 0.3)
+			op.GeoM.Translate(float64(ui[i].X+5), float64(ui[i].Y-(ui[i].Ysize*0.5)+5))
+			text.Draw(screen, ui[i].Text, face, op)
+		}
 	}
 }
 
@@ -63,6 +66,7 @@ func AddUi(
 	Border float32,
 	Text string,
 	ID string,
+	Disp bool,
 ) {
-	*UI = append(*UI, UIElement{X, Y, Xsize, Ysize, Border, Text, ID})
+	*UI = append(*UI, UIElement{X, Y, Xsize, Ysize, Border, Text, ID, Disp})
 }
