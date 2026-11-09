@@ -1,5 +1,5 @@
 {
-  "Silicone": 0,
+  "Silicone": 2.616666,
   "Upgrades": [
     {
       "Name": "Glass Matrix",
@@ -47,8 +47,8 @@
       "Name": "Slicer",
       "Speed": 1,
       "Image": {},
-      "Cost": 15,
-      "Count": 0
+      "Cost": 18,
+      "Count": 1
     },
     {
       "Name": "Printer",
