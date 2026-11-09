@@ -1,0 +1,82 @@
+{
+  "Silicone": 0,
+  "Upgrades": [
+    {
+      "Name": "Glass Matrix",
+      "Power": 1.5,
+      "Image": {},
+      "Machine": "Slicer",
+      "Cost": 50,
+      "Tier": 0
+    },
+    {
+      "Name": "Better Toner",
+      "Power": 1.5,
+      "Image": {},
+      "Machine": "Printer",
+      "Cost": 300,
+      "Tier": 0
+    },
+    {
+      "Name": "Better LEDs",
+      "Power": 1.5,
+      "Image": {},
+      "Machine": "Exposer",
+      "Cost": 800,
+      "Tier": 0
+    },
+    {
+      "Name": "RadioAcid",
+      "Power": 2,
+      "Image": {},
+      "Machine": "Etcher",
+      "Cost": 1500,
+      "Tier": 0
+    },
+    {
+      "Name": "New Servos",
+      "Power": 2,
+      "Image": {},
+      "Machine": "Assembler",
+      "Cost": 5000,
+      "Tier": 0
+    }
+  ],
+  "Machines": [
+    {
+      "Name": "Slicer",
+      "Speed": 1,
+      "Image": {},
+      "Cost": 15,
+      "Count": 0
+    },
+    {
+      "Name": "Printer",
+      "Speed": 5,
+      "Image": {},
+      "Cost": 50,
+      "Count": 0
+    },
+    {
+      "Name": "Exposer",
+      "Speed": 20,
+      "Image": {},
+      "Cost": 150,
+      "Count": 0
+    },
+    {
+      "Name": "Etcher",
+      "Speed": 60,
+      "Image": {},
+      "Cost": 1000,
+      "Count": 0
+    },
+    {
+      "Name": "Assembler",
+      "Speed": 120,
+      "Image": {},
+      "Cost": 3000,
+      "Count": 0
+    }
+  ]
+}

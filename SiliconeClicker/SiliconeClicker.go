@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"image/color"
 	_ "image/color"
@@ -38,7 +39,7 @@ type Machine struct {
 	Speed float32
 	Image *ebiten.Image
 	Cost  int
-	count int
+	Count int
 }
 
 type Upgrade struct {
@@ -65,6 +66,12 @@ type VanType struct {
 	X  int
 	Y  int
 	Is bool
+}
+
+type SaveData struct {
+	Silicone float32
+	Upgrades []Upgrade
+	Machines []Machine
 }
 
 var Particles []Particle
@@ -105,7 +112,7 @@ func loadImage(path string) *ebiten.Image {
 func (g *Game) Update() error {
 	SiliconeRate = 0
 	for i := 0; i < len(Machines); i++ {
-		SiliconeRate = SiliconeRate + float32(Machines[i].count)*Machines[i].Speed
+		SiliconeRate = SiliconeRate + float32(Machines[i].Count)*Machines[i].Speed
 	}
 	Silicone = Silicone + (SiliconeRate / 60)
 	mouse.JSTIn = ebiten.IsMouseButtonPressed(ebiten.MouseButton0) && !mouse.In
@@ -252,10 +259,29 @@ func main() {
 	ebiten.RunGame(&Game{})
 }
 
+func SaveGame(state SaveData) error {
+	b, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile("save.json", b, 0644)
+}
+
+func LoadGame() (SaveData, error) {
+	var s SaveData
+	b, err := os.ReadFile("save.json")
+	if err != nil {
+		return s, err
+	}
+	err = json.Unmarshal(b, &s)
+	return s, err
+}
+
 func SimulateMain(g *Game) error {
+
 	if int(rand.Float64()*600) == 1 {
 		if int(rand.Float32()*3) == 1 {
-			Van = VanType{0, int(rand.Float32() * 240), true}
+			Van = VanType{0, int(rand.Float32() * 160), true}
 		}
 	}
 	if Van.Is {
@@ -265,7 +291,24 @@ func SimulateMain(g *Game) error {
 		}
 	}
 	if mouse.JSTIn {
-		if mouse.X > Van.X && mouse.X < Van.X+53 && mouse.Y > Van.Y && mouse.Y < Van.Y+36 {
+		if mouse.X > 120 && mouse.X < 180 && mouse.Y < 60 {
+			var Save, err = LoadGame()
+			if !(err == nil) {
+				return err
+			}
+			Silicone = Save.Silicone
+			for i := 0; i < len(Machines); i++ {
+				Machines[i].Count = Save.Machines[i].Count
+				Machines[i].Cost = Save.Machines[i].Cost
+				Machines[i].Speed = Save.Machines[i].Speed
+			}
+			for i := 0; i < len(Upgrades); i++ {
+				Upgrades[i].Tier = Save.Upgrades[i].Tier
+				Upgrades[i].Cost = Save.Upgrades[i].Cost
+			}
+		}
+
+		if mouse.X > Van.X && mouse.X < Van.X+53 && mouse.Y > Van.Y && mouse.Y < Van.Y+36 && Van.Is {
 			Van.Is = false
 			Particles = append(Particles, Particle{
 				float32(Van.X), float32(Van.Y),
@@ -299,6 +342,11 @@ func SimulateMain(g *Game) error {
 			})
 		}
 		if mouse.X < 110 && mouse.Y > 200 {
+			SaveGame(SaveData{
+				Silicone,
+				Upgrades,
+				Machines,
+			})
 			return ebiten.Termination
 		}
 		if mouse.X > 110 && mouse.Y > 200 && mouse.X < 230 {
@@ -308,7 +356,7 @@ func SimulateMain(g *Game) error {
 			if mouse.X > 245 && mouse.Y > i*45 && mouse.Y < (i*45)+45 {
 				if Silicone >= float32(Machines[i].Cost) {
 					Silicone = Silicone - float32(Machines[i].Cost)
-					Machines[i].count++
+					Machines[i].Count++
 					Machines[i].Cost = int(float32(Machines[i].Cost) * 1.2)
 				}
 			}
@@ -399,9 +447,20 @@ func DrawMain(screen *ebiten.Image) {
 			op2.GeoM.Translate(0, 15)
 			text.Draw(screen, (fmt.Sprintf("%s %.f", "Speed: ", Machines[i].Speed)), face, op2)
 			op2.GeoM.Translate(0, 15)
-			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].count)), face, op2)
+			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].Count)), face, op2)
 		}
 	}
+
+	op = &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(1.2, 0.6)
+	op.GeoM.Translate(120, 10)
+
+	screen.DrawImage(StatBoxImg, op)
+
+	op2 = &text.DrawOptions{}
+	op2.GeoM.Scale(0.5, 0.5)
+	op2.GeoM.Translate(130, 15)
+	text.Draw(screen, "Load", face, op2)
 
 	if Van.Is {
 		op := &ebiten.DrawImageOptions{}
