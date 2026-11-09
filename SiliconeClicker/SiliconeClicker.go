@@ -7,7 +7,7 @@ import (
 	_ "image/color"
 	"image/png"
 	_ "math"
-	_ "math/rand"
+	"math/rand"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -47,12 +47,33 @@ type Upgrade struct {
 	Image   *ebiten.Image
 	Machine string
 	Cost    int
-	Got     bool
+	Tier    int
 }
+
+type Particle struct {
+	X       float32
+	Y       float32
+	XVel    float32
+	YVel    float32
+	Image   *ebiten.Image
+	Gravity float32
+	Timer   int
+	Scale   float32
+}
+
+type VanType struct {
+	X  int
+	Y  int
+	Is bool
+}
+
+var Particles []Particle
 
 var state string = "Main"
 
 var mouse mousetype
+
+//var Silicone float32 = 9999999999999
 
 var Silicone float32
 
@@ -64,6 +85,7 @@ type Game struct {
 
 var SiliconeImg = loadImage("Assets/Silicone.png")
 var StatBoxImg = loadImage("Assets/StatBox.png")
+var VanImg = loadImage("Assets/Van.png")
 
 func loadImage(path string) *ebiten.Image {
 	f, err := os.Open(path)
@@ -130,50 +152,62 @@ var Machines []Machine
 
 var Upgrades []Upgrade
 
+var Bases []*ebiten.Image
+
+var Van VanType
+
 func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("SiliconeClicker")
+
+	Bases = []*ebiten.Image{
+		loadImage("Assets/Upgrades/Tier1.png"),
+		loadImage("Assets/Upgrades/Tier2.png"),
+		loadImage("Assets/Upgrades/Tier3.png"),
+		loadImage("Assets/Upgrades/Tier4.png"),
+		loadImage("Assets/Upgrades/Tier5.png"),
+	}
 
 	Upgrades = []Upgrade{
 		{
 			"Glass Matrix",
 			1.5,
-			loadImage("Assets/Upgrades/Slice1.png"),
+			loadImage("Assets/Upgrades/Slicer.png"),
 			"Slicer",
 			50,
-			false,
+			0,
 		},
 		{
 			"Better Toner",
 			1.5,
-			loadImage("Assets/Upgrades/Print1.png"),
+			loadImage("Assets/Upgrades/Printer.png"),
 			"Printer",
 			300,
-			false,
+			0,
 		},
 		{
 			"Better LEDs",
 			1.5,
-			loadImage("Assets/Upgrades/Expo1.png"),
+			loadImage("Assets/Upgrades/Exposer.png"),
 			"Exposer",
 			800,
-			false,
+			0,
 		},
 		{
-			"Citrus Juice",
+			"RadioAcid",
 			2,
-			loadImage("Assets/Upgrades/Etch1.png"),
+			loadImage("Assets/Upgrades/Etcher.png"),
 			"Etcher",
 			1500,
-			false,
+			0,
 		},
 		{
 			"New Servos",
-			1.5,
-			loadImage("Assets/Upgrades/Assemble1.png"),
+			2,
+			loadImage("Assets/Upgrades/Assembler.png"),
 			"Assembler",
 			5000,
-			false,
+			0,
 		},
 	}
 
@@ -219,9 +253,50 @@ func main() {
 }
 
 func SimulateMain(g *Game) error {
+	if int(rand.Float64()*600) == 1 {
+		if int(rand.Float32()*3) == 1 {
+			Van = VanType{0, int(rand.Float32() * 240), true}
+		}
+	}
+	if Van.Is {
+		Van.X++
+		if Van.X > 320 {
+			Van.Is = false
+		}
+	}
 	if mouse.JSTIn {
+		if mouse.X > Van.X && mouse.X < Van.X+53 && mouse.Y > Van.Y && mouse.Y < Van.Y+36 {
+			Van.Is = false
+			Particles = append(Particles, Particle{
+				float32(Van.X), float32(Van.Y),
+				0, -0.4,
+				VanImg,
+				0.1,
+				240,
+				3,
+			})
+			Silicone = Silicone * 2
+			for i := 0; i < 15; i++ {
+				Particles = append(Particles, Particle{
+					rand.Float32() * 100, 0,
+					0, -0.4,
+					SiliconeImg,
+					0.1,
+					240,
+					0.3,
+				})
+			}
+		}
 		if mouse.X > 25 && mouse.X < 75 && mouse.Y > 80 && mouse.Y < 130 {
 			Silicone++
+			Particles = append(Particles, Particle{
+				rand.Float32() * 100, 0,
+				0, -0.4,
+				SiliconeImg,
+				0.1,
+				240,
+				0.3,
+			})
 		}
 		if mouse.X < 110 && mouse.Y > 200 {
 			return ebiten.Termination
@@ -239,11 +314,30 @@ func SimulateMain(g *Game) error {
 			}
 		}
 	}
+	for i := 0; i < len(Particles); i++ {
+		var Thisparticle = &Particles[i]
+
+		Thisparticle.X = Thisparticle.X + Thisparticle.XVel
+		Thisparticle.Y = Thisparticle.Y + Thisparticle.YVel
+
+		Thisparticle.Timer = Thisparticle.Timer - 1
+		Thisparticle.YVel = Thisparticle.YVel + Thisparticle.Gravity
+		if Thisparticle.Timer <= 0 || Thisparticle.Y > 300 {
+			Particles = append(Particles[:i], Particles[i+1:]...)
+		}
+	}
+
 	return nil
 }
 
 func DrawMain(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
+	for i := 0; i < len(Particles); i++ {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(float64(Particles[i].Scale), float64(Particles[i].Scale))
+		op.GeoM.Translate(float64(Particles[i].X), float64(Particles[i].Y))
+		screen.DrawImage(Particles[i].Image, op)
+	}
 	vector.StrokeLine(screen, 110, 240, 110, 202.5, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 0, 200, 227.5, 200, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
@@ -308,6 +402,13 @@ func DrawMain(screen *ebiten.Image) {
 			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].count)), face, op2)
 		}
 	}
+
+	if Van.Is {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(3, 3)
+		op.GeoM.Translate(float64(Van.X), float64(Van.Y))
+		screen.DrawImage(VanImg, op)
+	}
 }
 
 func SimulateUpgrade(g *Game) error {
@@ -316,13 +417,16 @@ func SimulateUpgrade(g *Game) error {
 			state = "Main"
 		}
 		for i := 0; i < len(Upgrades); i++ {
-			if mouse.X > 50 && mouse.Y > (i*30)+45 && mouse.X < 70 && mouse.Y < (i*30)+65 {
-				if Silicone >= float32(Upgrades[i].Cost) {
-					Silicone = Silicone - float32(Upgrades[i].Cost)
-					Upgrades[i].Got = true
-					for i2 := 0; i2 < len(Machines); i2++ {
-						if Machines[i2].Name == Upgrades[i].Machine {
-							Machines[i2].Speed = Machines[i2].Speed * Upgrades[i].Power
+			if Upgrades[i].Tier < 5 {
+				if mouse.X > 50 && mouse.Y > (i*30)+45 && mouse.X < 70 && mouse.Y < (i*30)+65 {
+					if Silicone >= float32(Upgrades[i].Cost) {
+						Silicone = Silicone - float32(Upgrades[i].Cost)
+						Upgrades[i].Tier++
+						Upgrades[i].Cost = Upgrades[i].Cost * 3
+						for i2 := 0; i2 < len(Machines); i2++ {
+							if Machines[i2].Name == Upgrades[i].Machine {
+								Machines[i2].Speed = Machines[i2].Speed * Upgrades[i].Power
+							}
 						}
 					}
 				}
@@ -335,34 +439,40 @@ func SimulateUpgrade(g *Game) error {
 func DrawUpgrade(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(5.5, 4)
+	op.GeoM.Scale(6, 4)
 	op.GeoM.Translate(20, 20)
 	screen.DrawImage(StatBoxImg, op)
+
+	op2 := &text.DrawOptions{}
+	op2.GeoM.Translate(170, 10)
+	op2.GeoM.Scale(0.5, 0.5)
+	text.Draw(screen, (fmt.Sprintf("%s %.2f", "Silicone: ", Silicone)), face, op2)
 
 	op = &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(0.5, 0.5)
 	op.GeoM.Translate(20, 15)
 	screen.DrawImage(StatBoxImg, op)
 
-	op2 := &text.DrawOptions{}
+	op2 = &text.DrawOptions{}
 	op2.GeoM.Scale(0.8, 0.6)
 	op2.GeoM.Translate(23, 18)
 	text.Draw(screen, "X", face, op2)
 
 	for i := 0; i < len(Upgrades); i++ {
-		if !Upgrades[i].Got {
+		if Upgrades[i].Tier < 5 {
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(2, 2)
 			op.GeoM.Translate(50, float64(i*30)+45)
 			if int(Silicone) < Upgrades[i].Cost {
 				op.ColorScale.Scale(0.5, 0.5, 0.5, 1)
 			}
+			screen.DrawImage(Bases[Upgrades[i].Tier], op)
 			screen.DrawImage(Upgrades[i].Image, op)
 
 			op2 = &text.DrawOptions{}
 			op2.GeoM.Scale(0.5, 0.5)
 			op2.GeoM.Translate(80, float64(i*30)+48)
-			text.Draw(screen, fmt.Sprintf("%s %s %d", Upgrades[i].Name, ", Cost: ", Upgrades[i].Cost), face, op2)
+			text.Draw(screen, fmt.Sprintf("%s %s %d %s %d", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", Upgrades[i].Cost), face, op2)
 		}
 	}
 }
