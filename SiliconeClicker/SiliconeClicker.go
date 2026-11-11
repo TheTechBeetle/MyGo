@@ -12,7 +12,10 @@ import (
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 	_ "github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -20,6 +23,8 @@ import (
 var data, _ = os.ReadFile("assets/font.ttf")
 var r = bytes.NewReader(data)
 var src, _ = text.NewGoTextFaceSource(r)
+
+var audioContext = audio.NewContext(48000)
 
 var face = &text.GoTextFace{
 	Source:    src,
@@ -86,6 +91,8 @@ var Silicone float32
 
 var SiliconeRate float32
 
+var SiliconeClicked int
+
 type Game struct {
 	face text.Face
 }
@@ -93,6 +100,22 @@ type Game struct {
 var SiliconeImg = loadImage("Assets/Silicone.png")
 var StatBoxImg = loadImage("Assets/StatBox.png")
 var VanImg = loadImage("Assets/Van.png")
+
+var SiliconeWav *audio.Player
+var VanWav *audio.Player
+var ClickWav *audio.Player
+
+func loadWav(path string) (*audio.Player, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	d, err := wav.Decode(audioContext, f)
+	if err != nil {
+		return nil, err
+	}
+	return audio.NewPlayer(audioContext, d)
+}
 
 func loadImage(path string) *ebiten.Image {
 	f, err := os.Open(path)
@@ -166,6 +189,10 @@ var Van VanType
 func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("SiliconeClicker")
+
+	SiliconeWav, _ = loadWav("Assets/Silicone.WAV")
+	VanWav, _ = loadWav("Assets/Van.WAV")
+	ClickWav, _ = loadWav("Assets/Click.WAV")
 
 	Bases = []*ebiten.Image{
 		loadImage("Assets/Upgrades/Tier1.png"),
@@ -278,6 +305,13 @@ func LoadGame() (SaveData, error) {
 }
 
 func SimulateMain(g *Game) error {
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowUp) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowLeft) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+		Silicone = Silicone + float32(Machines[len(Machines)-1].Cost)
+	}
+	SiliconeClicked = SiliconeClicked - 1
 
 	if int(rand.Float64()*600) == 1 {
 		if int(rand.Float32()*3) == 1 {
@@ -290,8 +324,25 @@ func SimulateMain(g *Game) error {
 			Van.Is = false
 		}
 	}
-	if mouse.JSTIn {
+	if (mouse.X > 25 && mouse.X < 75 && mouse.Y > 80 && mouse.Y < 130 && mouse.JSTIn) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		Silicone++
+		SiliconeWav.SetPosition(0)
+		SiliconeWav.Play()
+		SiliconeClicked = 5
+		Particles = append(Particles, Particle{
+			rand.Float32() * 100, 0,
+			0, -0.4,
+			SiliconeImg,
+			0.1,
+			240,
+			0.3,
+		})
+	}
+
+	if mouse.JSTIn || (mouse.In && ebiten.IsKeyPressed(ebiten.KeyShift)) {
 		if mouse.X > 120 && mouse.X < 180 && mouse.Y < 60 {
+			ClickWav.SetPosition(0)
+			ClickWav.Play()
 			var Save, err = LoadGame()
 			if !(err == nil) {
 				return err
@@ -310,6 +361,8 @@ func SimulateMain(g *Game) error {
 
 		if mouse.X > Van.X && mouse.X < Van.X+53 && mouse.Y > Van.Y && mouse.Y < Van.Y+36 && Van.Is {
 			Van.Is = false
+			VanWav.SetPosition(0)
+			VanWav.Play()
 			Particles = append(Particles, Particle{
 				float32(Van.X), float32(Van.Y),
 				0, -0.4,
@@ -330,17 +383,6 @@ func SimulateMain(g *Game) error {
 				})
 			}
 		}
-		if mouse.X > 25 && mouse.X < 75 && mouse.Y > 80 && mouse.Y < 130 {
-			Silicone++
-			Particles = append(Particles, Particle{
-				rand.Float32() * 100, 0,
-				0, -0.4,
-				SiliconeImg,
-				0.1,
-				240,
-				0.3,
-			})
-		}
 		if mouse.X < 110 && mouse.Y > 200 {
 			SaveGame(SaveData{
 				Silicone,
@@ -351,10 +393,19 @@ func SimulateMain(g *Game) error {
 		}
 		if mouse.X > 110 && mouse.Y > 200 && mouse.X < 230 {
 			state = "Upgrades"
+			ClickWav.SetPosition(0)
+			ClickWav.Play()
 		}
 		for i := 0; i < len(Machines); i++ {
 			if mouse.X > 245 && mouse.Y > i*45 && mouse.Y < (i*45)+45 {
 				if Silicone >= float32(Machines[i].Cost) {
+					if i == len(Machines)-1 && Machines[i].Count == 0 {
+						VanWav.SetPosition(0)
+						VanWav.Play()
+					} else {
+						ClickWav.SetPosition(0)
+						ClickWav.Play()
+					}
 					Silicone = Silicone - float32(Machines[i].Cost)
 					Machines[i].Count++
 					Machines[i].Cost = int(float32(Machines[i].Cost) * 1.2)
@@ -391,8 +442,16 @@ func DrawMain(screen *ebiten.Image) {
 	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
 
 	op := &ebiten.DrawImageOptions{}
+	if SiliconeClicked > 0 {
+		var multi float64 = float64(SiliconeClicked)
+		multi = multi / 50
+		multi++
+		op.GeoM.Scale(multi, multi)
+		multi = float64(SiliconeClicked)
+		multi = multi / 5
+		op.GeoM.Translate(-1.25*multi, -4*multi)
+	}
 	op.GeoM.Translate(25, 80)
-	op.GeoM.Scale(1, 1)
 	screen.DrawImage(SiliconeImg, op)
 
 	op2 := &text.DrawOptions{}
@@ -471,15 +530,24 @@ func DrawMain(screen *ebiten.Image) {
 }
 
 func SimulateUpgrade(g *Game) error {
-	if mouse.JSTIn {
+	if mouse.JSTIn || ebiten.IsKeyPressed(ebiten.KeySpace) || (mouse.In && ebiten.IsKeyPressed(ebiten.KeyShift)) {
 		if mouse.X > 20 && mouse.X < 45 && mouse.Y > 15 && mouse.Y < 40 {
 			state = "Main"
+			ClickWav.SetPosition(0)
+			ClickWav.Play()
 		}
 		for i := 0; i < len(Upgrades); i++ {
 			if Upgrades[i].Tier < 5 {
 				if mouse.X > 50 && mouse.Y > (i*30)+45 && mouse.X < 70 && mouse.Y < (i*30)+65 {
 					if Silicone >= float32(Upgrades[i].Cost) {
 						Silicone = Silicone - float32(Upgrades[i].Cost)
+						if Upgrades[i].Tier == 4 {
+							VanWav.SetPosition(0)
+							VanWav.Play()
+						} else {
+							ClickWav.SetPosition(0)
+							ClickWav.Play()
+						}
 						Upgrades[i].Tier++
 						Upgrades[i].Cost = Upgrades[i].Cost * 3
 						for i2 := 0; i2 < len(Machines); i2++ {
