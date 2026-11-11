@@ -79,6 +79,16 @@ type SaveData struct {
 	Machines []Machine
 }
 
+type options struct {
+	X        float64
+	Y        float64
+	Xsize    float64
+	Ysize    float64
+	Text     string
+	Image    *ebiten.Image
+	TextSize float64
+}
+
 var Particles []Particle
 
 var state string = "Main"
@@ -185,6 +195,34 @@ var Upgrades []Upgrade
 var Bases []*ebiten.Image
 
 var Van VanType
+
+func ButtonOptions() (op options) {
+	return options{
+		Xsize:    100,
+		Ysize:    100,
+		TextSize: 1,
+	}
+}
+
+func DrawButton(op options, screen *ebiten.Image) {
+	op2 := &ebiten.DrawImageOptions{}
+	op2.GeoM.Scale(op.Xsize/float64(op.Image.Bounds().Size().X), op.Ysize/float64(op.Image.Bounds().Size().Y))
+	op2.GeoM.Translate(op.X, op.Y)
+	screen.DrawImage(op.Image, op2)
+
+	op3 := &text.DrawOptions{}
+	op3.GeoM.Scale(op.TextSize, op.TextSize)
+	op3.GeoM.Translate(op.X, op.Y)
+	text.Draw(screen, op.Text, face, op3)
+}
+
+func TestButton(op options) (clicked bool) {
+	return (mouse.X > int(op.X) &&
+		mouse.X < int(op.X+(op.Xsize)) &&
+		mouse.Y > int(op.Y) &&
+		mouse.Y < int(op.Y+(op.Ysize)) &&
+		mouse.JSTIn)
+}
 
 func main() {
 	ebiten.SetWindowSize(640, 480)
@@ -324,7 +362,12 @@ func SimulateMain(g *Game) error {
 			Van.Is = false
 		}
 	}
-	if (mouse.X > 25 && mouse.X < 75 && mouse.Y > 80 && mouse.Y < 130 && mouse.JSTIn) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	op3 := ButtonOptions()
+	op3.X = 30
+	op3.Y = 80
+	op3.Xsize = 50
+	op3.Ysize = 50
+	if TestButton(op3) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		Silicone++
 		SiliconeWav.SetPosition(0)
 		SiliconeWav.Play()
@@ -340,6 +383,12 @@ func SimulateMain(g *Game) error {
 	}
 
 	if mouse.JSTIn || (mouse.In && ebiten.IsKeyPressed(ebiten.KeyShift)) {
+		op3 = ButtonOptions()
+		op3.X = 120
+		op3.Y = 60
+		op3.Xsize = 60
+		op3.Ysize = 30
+
 		if mouse.X > 120 && mouse.X < 180 && mouse.Y < 60 {
 			ClickWav.SetPosition(0)
 			ClickWav.Play()
@@ -431,6 +480,7 @@ func SimulateMain(g *Game) error {
 
 func DrawMain(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
+
 	for i := 0; i < len(Particles); i++ {
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(float64(Particles[i].Scale), float64(Particles[i].Scale))
@@ -441,18 +491,20 @@ func DrawMain(screen *ebiten.Image) {
 	vector.StrokeLine(screen, 0, 200, 227.5, 200, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
 
-	op := &ebiten.DrawImageOptions{}
+	op3 := ButtonOptions()
+	op3.X = 30
+	op3.Y = 80
+	op3.Xsize = 50
+	op3.Ysize = 50
+	op3.Image = SiliconeImg
 	if SiliconeClicked > 0 {
-		var multi float64 = float64(SiliconeClicked)
-		multi = multi / 50
-		multi++
-		op.GeoM.Scale(multi, multi)
-		multi = float64(SiliconeClicked)
-		multi = multi / 5
-		op.GeoM.Translate(-1.25*multi, -4*multi)
+		op3.X = 30 - (float64(SiliconeClicked))
+		op3.Y = 80 - (float64(SiliconeClicked))
+		op3.Xsize = 50 + (float64(SiliconeClicked) * 2)
+		op3.Ysize = 50 + (float64(SiliconeClicked) * 2)
 	}
-	op.GeoM.Translate(25, 80)
-	screen.DrawImage(SiliconeImg, op)
+
+	DrawButton(op3, screen)
 
 	op2 := &text.DrawOptions{}
 	op2.GeoM.Translate(10, 30)
@@ -461,7 +513,7 @@ func DrawMain(screen *ebiten.Image) {
 	op2.GeoM.Translate(0, 30)
 	text.Draw(screen, (fmt.Sprintf("%s %.2f", "Silicone/Sec: ", SiliconeRate)), face, op2)
 
-	op = &ebiten.DrawImageOptions{}
+	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(2, 0.7)
 	op.GeoM.Translate(5, 205)
 
@@ -516,10 +568,14 @@ func DrawMain(screen *ebiten.Image) {
 
 	screen.DrawImage(StatBoxImg, op)
 
-	op2 = &text.DrawOptions{}
-	op2.GeoM.Scale(0.5, 0.5)
-	op2.GeoM.Translate(130, 15)
-	text.Draw(screen, "Load", face, op2)
+	op3 = ButtonOptions()
+	op3.X = 120
+	op3.Y = 60
+	op3.Xsize = 60
+	op3.Ysize = 30
+	op3.Image = StatBoxImg
+	op3.
+		text.Draw(screen, "Load", face, op2)
 
 	if Van.Is {
 		op := &ebiten.DrawImageOptions{}
