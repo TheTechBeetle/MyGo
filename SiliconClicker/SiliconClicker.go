@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image/color"
 	_ "image/color"
@@ -326,6 +327,20 @@ func main() {
 		},
 	}
 
+	var Save, err = LoadGame()
+	if err == nil {
+		Silicon = Save.Silicon
+		for i := 0; i < len(Machines); i++ {
+			Machines[i].Count = Save.Machines[i].Count
+			Machines[i].Cost = Save.Machines[i].Cost
+			Machines[i].Speed = Save.Machines[i].Speed
+		}
+		for i := 0; i < len(Upgrades); i++ {
+			Upgrades[i].Tier = Save.Upgrades[i].Tier
+			Upgrades[i].Cost = Save.Upgrades[i].Cost
+		}
+	}
+
 	ebiten.RunGame(&Game{})
 }
 
@@ -342,6 +357,9 @@ func LoadGame() (SaveData, error) {
 	b, err := os.ReadFile("save.json")
 	if err != nil {
 		return s, err
+	}
+	if b == nil {
+		return s, errors.New("NOFILE")
 	}
 	err = json.Unmarshal(b, &s)
 	return s, err
@@ -393,32 +411,6 @@ func SimulateMain(g *Game) error {
 			240,
 			0.3,
 		})
-	}
-
-	// load
-	op3 = ButtonOptions()
-	op3.X = 120
-	op3.Y = 1
-	op3.Xsize = 60
-	op3.Ysize = 30
-
-	if TestButton(op3) {
-		ClickWav.SetPosition(0)
-		ClickWav.Play()
-		var Save, err = LoadGame()
-		if !(err == nil) {
-			return err
-		}
-		Silicon = Save.Silicon
-		for i := 0; i < len(Machines); i++ {
-			Machines[i].Count = Save.Machines[i].Count
-			Machines[i].Cost = Save.Machines[i].Cost
-			Machines[i].Speed = Save.Machines[i].Speed
-		}
-		for i := 0; i < len(Upgrades); i++ {
-			Upgrades[i].Tier = Save.Upgrades[i].Tier
-			Upgrades[i].Cost = Save.Upgrades[i].Cost
-		}
 	}
 
 	// Quit
@@ -577,6 +569,7 @@ func DrawMain(screen *ebiten.Image) {
 	DrawButton(op3, screen)
 
 	// Upgrades
+
 	op3 = ButtonOptions()
 	op3.X = 120
 	op3.Y = 205
@@ -617,17 +610,6 @@ func DrawMain(screen *ebiten.Image) {
 			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].Count)), face, op2)
 		}
 	}
-
-	//LoadButton
-	op3 = ButtonOptions()
-	op3.X = 120
-	op3.Y = 1
-	op3.Xsize = 60
-	op3.Ysize = 30
-	op3.Image = StatBoxImg
-	op3.Text = "Load"
-	op3.TextSize = 0.5
-	DrawButton(op3, screen)
 
 	// Van
 	if Van.Is {
