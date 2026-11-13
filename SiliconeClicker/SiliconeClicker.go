@@ -445,21 +445,25 @@ func SimulateMain(g *Game) error {
 	return nil
 }
 
-func DrawMain(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{97, 87, 160, 1})
+func drawParticles(screen *ebiten.Image) {
 	for i := 0; i < len(Particles); i++ {
-		if Particles[i].Text != "" {
+		p := Particles[i]
+		if p.Text != "" {
 			textOp := &text.DrawOptions{}
-			textOp.GeoM.Scale(float64(Particles[i].Scale), float64(Particles[i].Scale))
-			textOp.GeoM.Translate(float64(Particles[i].X), float64(Particles[i].Y))
-			text.Draw(screen, Particles[i].Text, face, textOp)
-		} else if Particles[i].Image != nil {
+			textOp.GeoM.Scale(float64(p.Scale), float64(p.Scale))
+			textOp.GeoM.Translate(float64(p.X), float64(p.Y))
+			text.Draw(screen, p.Text, face, textOp)
+		} else if p.Image != nil {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(float64(Particles[i].Scale), float64(Particles[i].Scale))
-			op.GeoM.Translate(float64(Particles[i].X), float64(Particles[i].Y))
-			screen.DrawImage(Particles[i].Image, op)
+			op.GeoM.Scale(float64(p.Scale), float64(p.Scale))
+			op.GeoM.Translate(float64(p.X), float64(p.Y))
+			screen.DrawImage(p.Image, op)
 		}
 	}
+}
+
+func DrawMain(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{97, 87, 160, 1})
 	vector.StrokeLine(screen, 110, 240, 110, 202.5, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 0, 200, 227.5, 200, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
@@ -476,6 +480,7 @@ func DrawMain(screen *ebiten.Image) {
 	}
 	op.GeoM.Translate(25, 80)
 	screen.DrawImage(SiliconeImg, op)
+	drawParticles(screen)
 
 	op2 := &text.DrawOptions{}
 	op2.GeoM.Translate(10, 30)
