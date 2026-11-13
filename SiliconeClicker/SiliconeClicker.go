@@ -20,7 +20,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-var data, _ = os.ReadFile("assets/font.ttf")
+var data, _ = os.ReadFile("Assets/Font.ttf")
 var r = bytes.NewReader(data)
 var src, _ = text.NewGoTextFaceSource(r)
 
@@ -190,9 +190,9 @@ func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("SiliconeClicker")
 
-	SiliconeWav, _ = loadWav("Assets/Silicone.WAV")
-	VanWav, _ = loadWav("Assets/Van.WAV")
-	ClickWav, _ = loadWav("Assets/Click.WAV")
+	SiliconeWav, _ = loadWav("Assets/Silicone.wav")
+	VanWav, _ = loadWav("Assets/Van.wav")
+	ClickWav, _ = loadWav("Assets/Click.wav")
 
 	Bases = []*ebiten.Image{
 		loadImage("Assets/Upgrades/Tier1.png"),
