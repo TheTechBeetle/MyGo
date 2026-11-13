@@ -340,6 +340,15 @@ func SimulateMain(g *Game) error {
 			Timer:   240,
 			Scale:   0.3,
 		})
+		Particles = append(Particles, Particle{
+			X:       40 + rand.Float32()*20,
+			Y:       90,
+			YVel:    0.5,
+			Gravity: 0.02,
+			Timer:   60,
+			Scale:   0.5,
+			Text:    "+1",
+		})
 	}
 
 	if mouse.JSTIn || (mouse.In && ebiten.IsKeyPressed(ebiten.KeyShift)) {
