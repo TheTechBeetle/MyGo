@@ -66,6 +66,7 @@ type Particle struct {
 	Gravity float32
 	Timer   int
 	Scale   float32
+	Text    string
 }
 
 type VanType struct {
@@ -404,12 +405,23 @@ func SimulateMain(g *Game) error {
 		SiliconWav.Play()
 		SiliconClicked = 5
 		Particles = append(Particles, Particle{
-			rand.Float32() * 100, 0,
-			0, -0.4,
-			SiliconImg,
-			0.1,
-			240,
-			0.3,
+			X:       rand.Float32() * 100,
+			Y:       0,
+			XVel:    0,
+			YVel:    -0.4,
+			Image:   SiliconImg,
+			Gravity: 0.1,
+			Timer:   240,
+			Scale:   0.3,
+		})
+		Particles = append(Particles, Particle{
+			X:       40 + rand.Float32()*20,
+			Y:       90,
+			YVel:    0.5,
+			Gravity: 0.02,
+			Timer:   60,
+			Scale:   0.5,
+			Text:    "+1",
 		})
 	}
 
@@ -455,22 +467,26 @@ func SimulateMain(g *Game) error {
 			VanWav.SetPosition(0)
 			VanWav.Play()
 			Particles = append(Particles, Particle{
-				float32(Van.X), float32(Van.Y),
-				0, -0.4,
-				VanImg,
-				0.1,
-				240,
-				3,
+				X:       float32(Van.X),
+				Y:       float32(Van.Y),
+				XVel:    0,
+				YVel:    -0.4,
+				Image:   VanImg,
+				Gravity: 0.1,
+				Timer:   240,
+				Scale:   3,
 			})
 			Silicon = Silicon * 2
 			for i := 0; i < 15; i++ {
 				Particles = append(Particles, Particle{
-					rand.Float32() * 100, 0,
-					0, -0.4,
-					SiliconImg,
-					0.1,
-					240,
-					0.3,
+					X:       rand.Float32() * 100,
+					Y:       0,
+					XVel:    0,
+					YVel:    -0.4,
+					Image:   SiliconImg,
+					Gravity: 0.1,
+					Timer:   240,
+					Scale:   0.3,
 				})
 			}
 		}
@@ -517,18 +533,25 @@ func SimulateMain(g *Game) error {
 	return nil
 }
 
+func drawParticles(screen *ebiten.Image) {
+	for i := 0; i < len(Particles); i++ {
+		p := Particles[i]
+		if p.Text != "" {
+			textOp := &text.DrawOptions{}
+			textOp.GeoM.Scale(float64(p.Scale), float64(p.Scale))
+			textOp.GeoM.Translate(float64(p.X), float64(p.Y))
+			text.Draw(screen, p.Text, face, textOp)
+		} else if p.Image != nil {
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(float64(p.Scale), float64(p.Scale))
+			op.GeoM.Translate(float64(p.X), float64(p.Y))
+			screen.DrawImage(p.Image, op)
+		}
+	}
+}
+
 func DrawMain(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
-
-	// Particles
-	for i := 0; i < len(Particles); i++ {
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(float64(Particles[i].Scale), float64(Particles[i].Scale))
-		op.GeoM.Translate(float64(Particles[i].X), float64(Particles[i].Y))
-		screen.DrawImage(Particles[i].Image, op)
-	}
-
-	// Separators
 	vector.StrokeLine(screen, 110, 240, 110, 202.5, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 0, 200, 227.5, 200, 5, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
@@ -548,6 +571,7 @@ func DrawMain(screen *ebiten.Image) {
 	}
 
 	DrawButton(op3, screen)
+	drawParticles(screen)
 
 	// Silicon Stats
 	op2 := &text.DrawOptions{}
