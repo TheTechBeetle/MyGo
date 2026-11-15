@@ -328,7 +328,7 @@ func main() {
 			2,
 			loadImage("Assets/Upgrades/Foundry.png"),
 			"Automated",
-			20000,
+			2000000,
 			0,
 		},
 		{
@@ -336,7 +336,7 @@ func main() {
 			2,
 			loadImage("Assets/Upgrades/Quantum.png"),
 			"Quantum",
-			20000,
+			10000000,
 			0,
 		},
 	}
@@ -866,9 +866,9 @@ func DrawUpgrade(screen *ebiten.Image) {
 			}
 
 			op2 = &text.DrawOptions{}
-			op2.GeoM.Scale(0.5, 0.5)
+			op2.GeoM.Scale(0.4, 0.4)
 			op2.GeoM.Translate(80, float64((i*30)+ScrollState)+48)
-			text.Draw(screen, fmt.Sprintf("%s %s %d %s %d", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", Upgrades[i].Cost), face, op2)
+			text.Draw(screen, fmt.Sprintf("%s %s %d %s %s", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", large(float32(Upgrades[i].Cost))), face, op2)
 		}
 	}
 }
