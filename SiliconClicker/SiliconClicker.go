@@ -46,6 +46,7 @@ type Machine struct {
 	Image *ebiten.Image
 	Cost  int
 	Count int
+	name2 string
 }
 
 type Upgrade struct {
@@ -106,6 +107,10 @@ var SiliconRate float32
 
 var SiliconClicked int
 
+var MousePower float32
+
+var ScrollState int
+
 type Game struct {
 	face text.Face
 }
@@ -146,6 +151,10 @@ func loadImage(path string) *ebiten.Image {
 }
 
 func (g *Game) Update() error {
+	var _, Scroll = ebiten.Wheel()
+	ScrollState += int(Scroll * 10)
+	ScrollState = min(ScrollState, 0)
+
 	SiliconRate = 0
 	for i := 0; i < len(Machines); i++ {
 		SiliconRate = SiliconRate + float32(Machines[i].Count)*Machines[i].Speed
@@ -243,11 +252,21 @@ func main() {
 	Bases = []*ebiten.Image{
 		loadImage("Assets/Upgrades/Tier1.png"),
 		loadImage("Assets/Upgrades/Tier2.png"),
-		loadImage("Assets/Upgrades/Tier3.png"), loadImage("Assets/Upgrades/Tier4.png"),
+		loadImage("Assets/Upgrades/Tier3.png"),
+		loadImage("Assets/Upgrades/Tier4.png"),
 		loadImage("Assets/Upgrades/Tier5.png"),
+		loadImage("Assets/Upgrades/MAX.png"),
 	}
 
 	Upgrades = []Upgrade{
+		{
+			"NPN Cursor",
+			2,
+			loadImage("Assets/Upgrades/Mouse.png"),
+			"Mouse",
+			150,
+			0,
+		},
 		{
 			"Glass Matrix",
 			1.5,
@@ -288,6 +307,38 @@ func main() {
 			5000,
 			0,
 		},
+		{
+			"Thermo Crystals",
+			2,
+			loadImage("Assets/Upgrades/Wafer.png"),
+			"Wafer Fab",
+			20000,
+			0,
+		},
+		{
+			"Intagrated Casing",
+			2,
+			loadImage("Assets/Upgrades/ChipLine.png"),
+			"Chip Packing",
+			100000,
+			0,
+		},
+		{
+			"Nuclear Forge",
+			2,
+			loadImage("Assets/Upgrades/Foundry.png"),
+			"Automated",
+			20000,
+			0,
+		},
+		{
+			"Entanglement",
+			2,
+			loadImage("Assets/Upgrades/Quantum.png"),
+			"Quantum",
+			20000,
+			0,
+		},
 	}
 
 	Machines = []Machine{
@@ -297,6 +348,7 @@ func main() {
 			loadImage("Assets/Machines/Slicer.png"),
 			15,
 			0,
+			"",
 		},
 		{
 			"Printer",
@@ -304,6 +356,7 @@ func main() {
 			loadImage("Assets/Machines/Printer.png"),
 			50,
 			0,
+			"",
 		},
 		{
 			"Exposer",
@@ -311,6 +364,7 @@ func main() {
 			loadImage("Assets/Machines/Exposer.png"),
 			150,
 			0,
+			"",
 		},
 		{
 			"Etcher",
@@ -318,6 +372,7 @@ func main() {
 			loadImage("Assets/Machines/Etcher.png"),
 			1000,
 			0,
+			"",
 		},
 		{
 			"Assembler",
@@ -325,20 +380,63 @@ func main() {
 			loadImage("Assets/Machines/Assembler.png"),
 			3000,
 			0,
+			"",
+		},
+		{
+			"Wafer Fab",
+			250,
+			loadImage("Assets/Machines/Wafer.png"),
+			12000,
+			0,
+			"",
+		},
+		{
+			"Chip Packing",
+			750,
+			loadImage("Assets/Machines/ChipLine.png"),
+			60000,
+			0,
+			"Line",
+		},
+		{
+			"Automated",
+			2250,
+			loadImage("Assets/Machines/Foundry.png"),
+			300000,
+			0,
+			"Foundry",
+		},
+		{
+			"Quantum",
+			6750,
+			loadImage("Assets/Machines/Quantum.png"),
+			1500000,
+			0,
+			"Fabricator",
 		},
 	}
 
 	var Save, err = LoadGame()
 	if err == nil {
 		Silicon = Save.Silicon
-		for i := 0; i < len(Machines); i++ {
-			Machines[i].Count = Save.Machines[i].Count
-			Machines[i].Cost = Save.Machines[i].Cost
-			Machines[i].Speed = Save.Machines[i].Speed
+		for i := range Machines {
+			for _, savedMachine := range Save.Machines {
+				if Machines[i].Name == savedMachine.Name {
+					Machines[i].Count = savedMachine.Count
+					Machines[i].Cost = savedMachine.Cost
+					Machines[i].Speed = savedMachine.Speed
+					break
+				}
+			}
 		}
-		for i := 0; i < len(Upgrades); i++ {
-			Upgrades[i].Tier = Save.Upgrades[i].Tier
-			Upgrades[i].Cost = Save.Upgrades[i].Cost
+		for i := range Upgrades {
+			for _, savedUpgrade := range Save.Upgrades {
+				if Upgrades[i].Name == savedUpgrade.Name {
+					Upgrades[i].Tier = savedUpgrade.Tier
+					Upgrades[i].Cost = savedUpgrade.Cost
+					break
+				}
+			}
 		}
 	}
 
@@ -366,7 +464,21 @@ func LoadGame() (SaveData, error) {
 	return s, err
 }
 
+func large(in float32) (out string) {
+	if in > 1000000000 {
+		out = fmt.Sprintf("%dB", int(in/1000000000))
+	} else if in > 1000000 {
+		out = fmt.Sprintf("%dM", int(in/1000000))
+	} else if in > 1000 {
+		out = fmt.Sprintf("%dK", int(in/1000))
+	} else {
+		out = fmt.Sprintf("%d", int(in))
+	}
+	return out
+}
+
 func SimulateMain(g *Game) error {
+
 	// hack
 	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) &&
 		ebiten.IsKeyPressed(ebiten.KeyArrowUp) &&
@@ -400,7 +512,7 @@ func SimulateMain(g *Game) error {
 	op3.Xsize = 50
 	op3.Ysize = 50
 	if TestButton(op3) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		Silicon++
+		Silicon += float32((Upgrades[0].Tier + 1) * (Upgrades[0].Tier + 1))
 		SiliconWav.SetPosition(0)
 		SiliconWav.Play()
 		SiliconClicked = 5
@@ -415,13 +527,13 @@ func SimulateMain(g *Game) error {
 			Scale:   0.3,
 		})
 		Particles = append(Particles, Particle{
-			X:       40 + rand.Float32()*20,
-			Y:       90,
-			YVel:    0.5,
+			X:       float32(mouse.X),
+			Y:       float32(mouse.Y + -10),
+			YVel:    -1.2,
 			Gravity: 0.02,
 			Timer:   60,
 			Scale:   0.5,
-			Text:    "+1",
+			Text:    fmt.Sprintf("+%d", (Upgrades[0].Tier+1)*(Upgrades[0].Tier+1)),
 		})
 	}
 
@@ -450,6 +562,7 @@ func SimulateMain(g *Game) error {
 
 	if TestButton(op3) {
 		state = "Upgrades"
+		ScrollState = 0
 		ClickWav.SetPosition(0)
 		ClickWav.Play()
 	}
@@ -496,13 +609,13 @@ func SimulateMain(g *Game) error {
 	for i := 0; i < len(Machines); i++ {
 		op3 = ButtonOptions()
 		op3.X = 245
-		op3.Y = float64(i*45) + 5
+		op3.Y = float64((i*45)+ScrollState) + 5
 		op3.Xsize = 70
 		op3.Ysize = 45
 
 		if TestButton(op3) {
 			if Silicon >= float32(Machines[i].Cost) {
-				if i == len(Machines)-1 && Machines[i].Count == 0 {
+				if Machines[i].Name == "Assembler" && Machines[i].Count == 0 {
 					VanWav.SetPosition(0)
 					VanWav.Play()
 				} else {
@@ -577,9 +690,9 @@ func DrawMain(screen *ebiten.Image) {
 	op2 := &text.DrawOptions{}
 	op2.GeoM.Translate(10, 30)
 	op2.GeoM.Scale(0.5, 0.5)
-	text.Draw(screen, (fmt.Sprintf("%s %.2f", "Silicon: ", Silicon)), face, op2)
+	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon))), face, op2)
 	op2.GeoM.Translate(0, 30)
-	text.Draw(screen, (fmt.Sprintf("%s %.2f", "Silicon/Sec: ", SiliconRate)), face, op2)
+	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon/Sec: ", large(SiliconRate))), face, op2)
 
 	// Quit
 	op3 = ButtonOptions()
@@ -609,27 +722,34 @@ func DrawMain(screen *ebiten.Image) {
 
 		op3 = ButtonOptions()
 		op3.X = 245
-		op3.Y = float64(i*45) + 5
+		op3.Y = float64((i*45)+ScrollState) + 5
 		op3.Xsize = 70
 		op3.Ysize = 45
 		op3.Image = Machines[i].Image
 		op3.Tint = Machines[i].Cost > int(Silicon)
 		DrawButton(op3, screen)
 
-		if mouse.X > 245 && mouse.Y > (i*45)+5 && mouse.Y < (i*45)+59 {
+		if mouse.X > 245 && mouse.Y > (i*45)+5+ScrollState && mouse.Y < (i*45)+59+ScrollState {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(1.5, 1.5)
+			op.GeoM.Scale(1.5, 2)
 			op.GeoM.Translate(153, 40)
 			screen.DrawImage(StatBoxImg, op)
 
 			op2 := &text.DrawOptions{}
 			op2.GeoM.Scale(0.3, 0.3)
 			op2.GeoM.Translate(163, 50)
-			text.Draw(screen, Machines[i].Name, face, op2)
+
+			if Machines[i].name2 != "" {
+				text.Draw(screen, Machines[i].Name, face, op2)
+				op2.GeoM.Translate(0, 15)
+				text.Draw(screen, Machines[i].name2, face, op2)
+			} else {
+				text.Draw(screen, Machines[i].Name, face, op2)
+			}
 			op2.GeoM.Translate(0, 15)
-			text.Draw(screen, (fmt.Sprintf("%s %d", "Cost: ", Machines[i].Cost)), face, op2)
+			text.Draw(screen, (fmt.Sprintf("%s %s", "Cost: ", large(float32(Machines[i].Cost)))), face, op2)
 			op2.GeoM.Translate(0, 15)
-			text.Draw(screen, (fmt.Sprintf("%s %.f", "Speed: ", Machines[i].Speed)), face, op2)
+			text.Draw(screen, (fmt.Sprintf("%s %s", "Speed: ", large(Machines[i].Speed))), face, op2)
 			op2.GeoM.Translate(0, 15)
 			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].Count)), face, op2)
 		}
@@ -658,31 +778,35 @@ func SimulateUpgrade(g *Game) error {
 
 	if TestButton(op3) {
 		state = "Main"
+		ScrollState = 0
 		ClickWav.SetPosition(0)
 		ClickWav.Play()
 	}
 
-	if mouse.JSTIn || ebiten.IsKeyPressed(ebiten.KeySpace) || (mouse.In && ebiten.IsKeyPressed(ebiten.KeyShift)) {
+	// Upgrades
+	for i := 0; i < len(Upgrades); i++ {
+		if Upgrades[i].Tier < 5 {
+			op3 = ButtonOptions()
+			op3.X = 50
+			op3.Y = float64((i*30)+ScrollState) + 45
+			op3.Xsize = 25
+			op3.Ysize = 25
 
-		// Upgrades
-		for i := 0; i < len(Upgrades); i++ {
-			if Upgrades[i].Tier < 5 {
-				if mouse.X > 50 && mouse.Y > (i*30)+45 && mouse.X < 70 && mouse.Y < (i*30)+65 {
-					if Silicon >= float32(Upgrades[i].Cost) {
-						Silicon = Silicon - float32(Upgrades[i].Cost)
-						if Upgrades[i].Tier == 4 {
-							VanWav.SetPosition(0)
-							VanWav.Play()
-						} else {
-							ClickWav.SetPosition(0)
-							ClickWav.Play()
-						}
-						Upgrades[i].Tier++
-						Upgrades[i].Cost = Upgrades[i].Cost * 3
-						for i2 := 0; i2 < len(Machines); i2++ {
-							if Machines[i2].Name == Upgrades[i].Machine {
-								Machines[i2].Speed = Machines[i2].Speed * Upgrades[i].Power
-							}
+			if TestButton(op3) {
+				if Silicon >= float32(Upgrades[i].Cost) {
+					Silicon = Silicon - float32(Upgrades[i].Cost)
+					if Upgrades[i].Tier == 4 {
+						VanWav.SetPosition(0)
+						VanWav.Play()
+					} else {
+						ClickWav.SetPosition(0)
+						ClickWav.Play()
+					}
+					Upgrades[i].Tier++
+					Upgrades[i].Cost = Upgrades[i].Cost * 3
+					for i2 := 0; i2 < len(Machines); i2++ {
+						if Machines[i2].Name == Upgrades[i].Machine {
+							Machines[i2].Speed = Machines[i2].Speed * Upgrades[i].Power
 						}
 					}
 				}
@@ -720,22 +844,30 @@ func DrawUpgrade(screen *ebiten.Image) {
 
 	// Upgrades
 	for i := 0; i < len(Upgrades); i++ {
-		if Upgrades[i].Tier < 5 {
+		if (i*30)+ScrollState < 140 && (i*30)+ScrollState > -20 {
 
 			op3 = ButtonOptions()
 			op3.X = 50
-			op3.Y = float64(i*30) + 45
+			op3.Y = float64((i*30)+ScrollState) + 45
 			op3.Xsize = 25
 			op3.Ysize = 25
 			op3.Tint = Upgrades[i].Cost > int(Silicon)
-			op3.Image = Bases[Upgrades[i].Tier]
-			DrawButton(op3, screen)
-			op3.Image = Upgrades[i].Image
-			DrawButton(op3, screen)
+
+			if Upgrades[i].Tier < 5 {
+				op3.Image = Bases[Upgrades[i].Tier]
+				DrawButton(op3, screen)
+				op3.Image = Upgrades[i].Image
+				DrawButton(op3, screen)
+			} else {
+				op3.Image = Bases[0]
+				DrawButton(op3, screen)
+				op3.Image = Bases[5]
+				DrawButton(op3, screen)
+			}
 
 			op2 = &text.DrawOptions{}
 			op2.GeoM.Scale(0.5, 0.5)
-			op2.GeoM.Translate(80, float64(i*30)+48)
+			op2.GeoM.Translate(80, float64((i*30)+ScrollState)+48)
 			text.Draw(screen, fmt.Sprintf("%s %s %d %s %d", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", Upgrades[i].Cost), face, op2)
 		}
 	}
