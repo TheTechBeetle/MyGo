@@ -6,16 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
-	_ "image/color"
 	"image/png"
-	_ "math"
 	"math/rand"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
-	_ "github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -115,9 +112,9 @@ type Game struct {
 	face text.Face
 }
 
-var SiliconImg = loadImage("Assets/Silicon.png")
-var StatBoxImg = loadImage("Assets/StatBox.png")
-var VanImg = loadImage("Assets/Van.png")
+var SiliconImg = loadImage("Assets/Images/Silicon.png")
+var StatBoxImg = loadImage("Assets/Images/StatBox.png")
+var VanImg = loadImage("Assets/Images/Van.png")
 
 var SiliconWav *audio.Player
 var VanWav *audio.Player
@@ -190,8 +187,23 @@ func (g *Game) Update() error {
 				return err
 			}
 		}
-	}
+	case "PrestigeMenu":
+		{
+			var err = SimulatePrestigeMenu(g)
+			if err != nil {
+				return err
+			}
 
+		}
+	case "PrestigeTree":
+		{
+			var err = SimulatePrestigeTree(g)
+			if err != nil {
+				return err
+			}
+
+		}
+	}
 	return nil
 }
 
@@ -206,6 +218,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	case "Upgrades":
 		{
 			DrawUpgrade(screen)
+		}
+	case "PrestigeMenu":
+		{
+			DrawPrestigeMenu(screen)
+		}
+	case "PrestigeTree":
+		{
+			DrawPrestigeTree(screen)
 		}
 	}
 }
@@ -259,23 +279,23 @@ func main() {
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("SiliconClicker")
 
-	SiliconWav, _ = loadWav("Assets/Silicon.wav")
-	VanWav, _ = loadWav("Assets/Van.wav")
-	ClickWav, _ = loadWav("Assets/Click.wav")
+	SiliconWav, _ = loadWav("Assets/Sounds/Silicon.wav")
+	VanWav, _ = loadWav("Assets/Sounds/Van.wav")
+	ClickWav, _ = loadWav("Assets/Sounds/Click.wav")
 
 	Bases = []*ebiten.Image{
-		loadImage("Assets/Upgrades/Tier1.png"),
-		loadImage("Assets/Upgrades/Tier2.png"),
-		loadImage("Assets/Upgrades/Tier3.png"),
-		loadImage("Assets/Upgrades/Tier4.png"),
-		loadImage("Assets/Upgrades/Tier5.png"),
+		loadImage("Assets/Upgrades/Bases/Tier1.png"),
+		loadImage("Assets/Upgrades/Bases/Tier2.png"),
+		loadImage("Assets/Upgrades/Bases/Tier3.png"),
+		loadImage("Assets/Upgrades/Bases/Tier4.png"),
+		loadImage("Assets/Upgrades/Bases/Tier5.png"),
 	}
 
 	Upgrades = []Upgrade{
 		{
 			"NPN Cursor",
 			2,
-			loadImage("Assets/Upgrades/Mouse.png"),
+			loadImage("Assets/Upgrades/Upgrades/Mouse.png"),
 			"Mouse",
 			150,
 			0,
@@ -283,7 +303,7 @@ func main() {
 		{
 			"Glass Matrix",
 			1.5,
-			loadImage("Assets/Upgrades/Slicer.png"),
+			loadImage("Assets/Upgrades/Upgrades/Slicer.png"),
 			"Slicer",
 			50,
 			0,
@@ -291,7 +311,7 @@ func main() {
 		{
 			"Better Toner",
 			1.5,
-			loadImage("Assets/Upgrades/Printer.png"),
+			loadImage("Assets/Upgrades/Upgrades/Printer.png"),
 			"Printer",
 			300,
 			0,
@@ -299,7 +319,7 @@ func main() {
 		{
 			"Better LEDs",
 			1.5,
-			loadImage("Assets/Upgrades/Exposer.png"),
+			loadImage("Assets/Upgrades/Upgrades/Exposer.png"),
 			"Exposer",
 			800,
 			0,
@@ -307,7 +327,7 @@ func main() {
 		{
 			"RadioAcid",
 			2,
-			loadImage("Assets/Upgrades/Etcher.png"),
+			loadImage("Assets/Upgrades/Upgrades/Etcher.png"),
 			"Etcher",
 			1500,
 			0,
@@ -315,7 +335,7 @@ func main() {
 		{
 			"New Servos",
 			2,
-			loadImage("Assets/Upgrades/Assembler.png"),
+			loadImage("Assets/Upgrades/Upgrades/Assembler.png"),
 			"Assembler",
 			5000,
 			0,
@@ -323,7 +343,7 @@ func main() {
 		{
 			"Thermo Crystals",
 			2,
-			loadImage("Assets/Upgrades/Wafer.png"),
+			loadImage("Assets/Upgrades/Upgrades/Wafer.png"),
 			"Wafer Fab",
 			20000,
 			0,
@@ -331,7 +351,7 @@ func main() {
 		{
 			"Intagrated Casing",
 			2,
-			loadImage("Assets/Upgrades/ChipLine.png"),
+			loadImage("Assets/Upgrades/Upgrades/ChipLine.png"),
 			"Chip Packing",
 			100000,
 			0,
@@ -339,7 +359,7 @@ func main() {
 		{
 			"Nuclear Forge",
 			2,
-			loadImage("Assets/Upgrades/Foundry.png"),
+			loadImage("Assets/Upgrades/Upgrades/Foundry.png"),
 			"Automated",
 			2000000,
 			0,
@@ -347,7 +367,7 @@ func main() {
 		{
 			"Entanglement",
 			2,
-			loadImage("Assets/Upgrades/Quantum.png"),
+			loadImage("Assets/Upgrades/Upgrades/Quantum.png"),
 			"Quantum",
 			10000000,
 			0,
@@ -427,6 +447,62 @@ func main() {
 			0,
 			"Fabricator",
 		},
+		{
+			"NanoFab",
+			30000,
+			loadImage("Assets/Machines/Addme"),
+			10000000,
+			0,
+			"",
+		},
+		{
+			"AI Compiler",
+			100000,
+			loadImage("Assets/Machines/Addme"),
+			100000000,
+			0,
+			"",
+		},
+		{
+			"Orbital Foundry",
+			3500000,
+			loadImage("Assets/Machines/Addme"),
+			1800000000,
+			0,
+			"",
+		},
+		{
+			"Molecular",
+			0, //Setme
+			loadImage("Assets/Machines/Addme"),
+			0, //Setme
+			0,
+			"Assembler",
+		},
+		{
+			"Plasma Etcher",
+			0, //Setme
+			loadImage("Assets/Machines/Addme"),
+			0, //Setme
+			0,
+			"",
+		},
+		{
+			"Dark Silicon Reactor",
+			0, //Setme
+			loadImage("Assets/Machines/Addme"),
+			0, //Setme
+			0,
+			"",
+		},
+		{
+			"Void Core",
+			0, //Setme
+			loadImage("Assets/Machines/Addme"),
+			0, //Setme
+			0,
+			"Fabricator",
+		},
 	}
 
 	var Save, err = LoadGame()
@@ -478,7 +554,13 @@ func LoadGame() (SaveData, error) {
 }
 
 func large(in float32) (out string) {
-	if in > 1000000000 {
+	if in > 1000000000000000000 {
+		out = "IDUNU"
+	} else if in > 1000000000000000 {
+		out = fmt.Sprintf("%dQ", int(in/1000000000000000))
+	} else if in > 1000000000000 {
+		out = fmt.Sprintf("%dT", int(in/1000000000000))
+	} else if in > 1000000000 {
 		out = fmt.Sprintf("%dB", int(in/1000000000))
 	} else if in > 1000000 {
 		out = fmt.Sprintf("%dM", int(in/1000000))
@@ -527,7 +609,7 @@ func SimulateMain(g *Game) error {
 		SiliconWav.Play()
 		SiliconClicked = 5
 		Particles = append(Particles, Particle{
-			X:       rand.Float32() * 100,
+			X:       rand.Float32() * 300,
 			Y:       0,
 			XVel:    0,
 			YVel:    -0.8,
@@ -551,7 +633,7 @@ func SimulateMain(g *Game) error {
 	op3 = ButtonOptions()
 	op3.X = 20
 	op3.Y = 410
-	op3.Xsize = 170
+	op3.Xsize = 85
 	op3.Ysize = 66
 
 	if TestButton(op3) {
@@ -565,13 +647,27 @@ func SimulateMain(g *Game) error {
 
 	// Upgrades
 	op3 = ButtonOptions()
-	op3.X = 240
+	op3.X = 130
 	op3.Y = 410
-	op3.Xsize = 180
+	op3.Xsize = 155
 	op3.Ysize = 66
 
 	if TestButton(op3) {
 		state = "Upgrades"
+		ScrollState = 0
+		ClickWav.SetPosition(0)
+		ClickWav.Play()
+	}
+
+	// Prestiege
+
+	op3 = ButtonOptions()
+	op3.X = 305
+	op3.Y = 410
+	op3.Xsize = 145
+	op3.Ysize = 66
+	if TestButton(op3) {
+		state = "PrestiegeMenu"
 		ScrollState = 0
 		ClickWav.SetPosition(0)
 		ClickWav.Play()
@@ -675,7 +771,8 @@ func drawParticles(screen *ebiten.Image) {
 
 func DrawMain(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
-	vector.StrokeLine(screen, 220, 480, 220, 405, 10, color.RGBA{30, 30, 20, 1}, false)
+	vector.StrokeLine(screen, 120, 480, 120, 405, 10, color.RGBA{30, 30, 20, 1}, false)
+	vector.StrokeLine(screen, 295, 480, 295, 405, 10, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 0, 400, 455, 400, 10, color.RGBA{30, 30, 20, 1}, false)
 	vector.StrokeLine(screen, 460, 0, 460, 480, 10, color.RGBA{30, 30, 20, 1}, false)
 
@@ -706,25 +803,37 @@ func DrawMain(screen *ebiten.Image) {
 
 	// Quit
 	op3 = ButtonOptions()
-	op3.X = 20
+	op3.X = 15
 	op3.Y = 410
-	op3.Xsize = 170
+	op3.Xsize = 90
 	op3.Ysize = 66
 	op3.Image = StatBoxImg
 	op3.Text = "Quit"
-	op3.TextSize = 1.4
+	op3.TextSize = 1
 	DrawButton(op3, screen)
 
 	// Upgrades
 
 	op3 = ButtonOptions()
-	op3.X = 240
+	op3.X = 135
 	op3.Y = 410
-	op3.Xsize = 180
+	op3.Xsize = 150
 	op3.Ysize = 66
 	op3.Image = StatBoxImg
 	op3.Text = "Upgrades"
-	op3.TextSize = 1
+	op3.TextSize = 0.9
+	DrawButton(op3, screen)
+
+	// Prestiege
+
+	op3 = ButtonOptions()
+	op3.X = 305
+	op3.Y = 410
+	op3.Xsize = 145
+	op3.Ysize = 66
+	op3.Image = StatBoxImg
+	op3.Text = "Prestiege"
+	op3.TextSize = 0.9
 	DrawButton(op3, screen)
 
 	// Machines
@@ -859,7 +968,7 @@ func DrawUpgrade(screen *ebiten.Image) {
 
 	// Upgrades
 	for i := 0; i < len(Upgrades); i++ {
-		if (i*60)+ScrollState < 140 && (i*60)+ScrollState > -40 {
+		if (i*60)+ScrollState < 280 && (i*60)+ScrollState > -40 {
 			if Upgrades[i].Tier < 5 {
 				op3 = ButtonOptions()
 				op3.X = 100
@@ -884,4 +993,20 @@ func DrawUpgrade(screen *ebiten.Image) {
 			text.Draw(screen, fmt.Sprintf("%s %s %d %s %s", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", large(float32(Upgrades[i].Cost))), face, op2)
 		}
 	}
+}
+
+func SimulatePrestigeMenu(g *Game) (err error) {
+	return nil
+}
+
+func SimulatePrestigeTree(g *Game) (err error) {
+	return nil
+}
+
+func DrawPrestigeMenu(screen *ebiten.Image) {
+
+}
+
+func DrawPrestigeTree(screen *ebiten.Image) {
+
 }
