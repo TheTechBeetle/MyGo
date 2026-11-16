@@ -153,7 +153,7 @@ func loadImage(path string) *ebiten.Image {
 func (g *Game) Update() error {
 	// Mouse
 	var _, Scroll = ebiten.Wheel()
-	ScrollState += int(Scroll * 10)
+	ScrollState += int(Scroll * 30)
 	ScrollState = min(ScrollState, 0)
 
 	// Dev
@@ -211,7 +211,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(outsideW, outsideH int) (int, int) {
-	return 320, 240
+	return 640, 480
 }
 
 var Machines []Machine
@@ -493,8 +493,8 @@ func large(in float32) (out string) {
 func SimulateMain(g *Game) error {
 
 	// Scroll Limiter
-	if ScrollState < -250 {
-		ScrollState = -250
+	if ScrollState < -500 {
+		ScrollState = -500
 	}
 
 	// Silicon animation progresser
@@ -503,24 +503,24 @@ func SimulateMain(g *Game) error {
 	// Spawn Van
 	if int(rand.Float64()*600) == 1 {
 		if int(rand.Float32()*3) == 1 {
-			Van = VanType{0, int(rand.Float32() * 160), true}
+			Van = VanType{0, int(rand.Float32() * 300), true}
 		}
 	}
 
 	// Simulate Van
 	if Van.Is {
 		Van.X++
-		if Van.X > 320 {
+		if Van.X > 640 {
 			Van.Is = false
 		}
 	}
 
 	// Silicon
 	op3 := ButtonOptions()
-	op3.X = 30
-	op3.Y = 80
-	op3.Xsize = 50
-	op3.Ysize = 50
+	op3.X = 60
+	op3.Y = 160
+	op3.Xsize = 100
+	op3.Ysize = 100
 	if TestButton(op3) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		Silicon += float32((Upgrades[0].Tier + 1) * (Upgrades[0].Tier + 1))
 		SiliconWav.SetPosition(0)
@@ -530,29 +530,29 @@ func SimulateMain(g *Game) error {
 			X:       rand.Float32() * 100,
 			Y:       0,
 			XVel:    0,
-			YVel:    -0.4,
+			YVel:    -0.8,
 			Image:   SiliconImg,
-			Gravity: 0.1,
+			Gravity: 0.2,
 			Timer:   240,
-			Scale:   0.3,
+			Scale:   0.6,
 		})
 		Particles = append(Particles, Particle{
 			X:       float32(mouse.X),
 			Y:       float32(mouse.Y + -10),
-			YVel:    -1.2,
-			Gravity: 0.02,
+			YVel:    -2.4,
+			Gravity: 0.04,
 			Timer:   60,
-			Scale:   0.5,
+			Scale:   1,
 			Text:    fmt.Sprintf("+%d", (Upgrades[0].Tier+1)*(Upgrades[0].Tier+1)),
 		})
 	}
 
 	// Quit
 	op3 = ButtonOptions()
-	op3.X = 10
-	op3.Y = 205
-	op3.Xsize = 85
-	op3.Ysize = 33
+	op3.X = 20
+	op3.Y = 410
+	op3.Xsize = 170
+	op3.Ysize = 66
 
 	if TestButton(op3) {
 		SaveGame(SaveData{
@@ -565,10 +565,10 @@ func SimulateMain(g *Game) error {
 
 	// Upgrades
 	op3 = ButtonOptions()
-	op3.X = 120
-	op3.Y = 205
-	op3.Xsize = 90
-	op3.Ysize = 33
+	op3.X = 240
+	op3.Y = 410
+	op3.Xsize = 180
+	op3.Ysize = 66
 
 	if TestButton(op3) {
 		state = "Upgrades"
@@ -582,8 +582,8 @@ func SimulateMain(g *Game) error {
 		op3 = ButtonOptions()
 		op3.X = float64(Van.X)
 		op3.Y = float64(Van.Y)
-		op3.Xsize = 54
-		op3.Ysize = 36
+		op3.Xsize = 108
+		op3.Ysize = 72
 
 		if TestButton(op3) {
 			Van.Is = false
@@ -593,11 +593,11 @@ func SimulateMain(g *Game) error {
 				X:       float32(Van.X),
 				Y:       float32(Van.Y),
 				XVel:    0,
-				YVel:    -0.4,
+				YVel:    -0.8,
 				Image:   VanImg,
-				Gravity: 0.1,
+				Gravity: 0.2,
 				Timer:   240,
-				Scale:   3,
+				Scale:   6,
 			})
 			Silicon = Silicon * 2
 			for i := 0; i < 15; i++ {
@@ -605,11 +605,11 @@ func SimulateMain(g *Game) error {
 					X:       rand.Float32() * 100,
 					Y:       0,
 					XVel:    0,
-					YVel:    -0.4,
+					YVel:    -0.8,
 					Image:   SiliconImg,
-					Gravity: 0.1,
+					Gravity: 0.2,
 					Timer:   240,
-					Scale:   0.3,
+					Scale:   0.6,
 				})
 			}
 		}
@@ -618,10 +618,10 @@ func SimulateMain(g *Game) error {
 	// Machines
 	for i := 0; i < len(Machines); i++ {
 		op3 = ButtonOptions()
-		op3.X = 245
-		op3.Y = float64((i*45)+ScrollState) + 5
-		op3.Xsize = 70
-		op3.Ysize = 45
+		op3.X = 490
+		op3.Y = float64((i*90)+ScrollState) + 10
+		op3.Xsize = 140
+		op3.Ysize = 90
 
 		if TestButton(op3) {
 			if Silicon >= float32(Machines[i].Cost) {
@@ -648,7 +648,7 @@ func SimulateMain(g *Game) error {
 
 		Thisparticle.Timer = Thisparticle.Timer - 1
 		Thisparticle.YVel = Thisparticle.YVel + Thisparticle.Gravity
-		if Thisparticle.Timer <= 0 || Thisparticle.Y > 300 {
+		if Thisparticle.Timer <= 0 || Thisparticle.Y > 640 {
 			Particles = append(Particles[:i], Particles[i+1:]...)
 		}
 	}
@@ -675,22 +675,22 @@ func drawParticles(screen *ebiten.Image) {
 
 func DrawMain(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
-	vector.StrokeLine(screen, 110, 240, 110, 202.5, 5, color.RGBA{30, 30, 20, 1}, false)
-	vector.StrokeLine(screen, 0, 200, 227.5, 200, 5, color.RGBA{30, 30, 20, 1}, false)
-	vector.StrokeLine(screen, 230, 0, 230, 240, 5, color.RGBA{30, 30, 20, 1}, false)
+	vector.StrokeLine(screen, 220, 480, 220, 405, 10, color.RGBA{30, 30, 20, 1}, false)
+	vector.StrokeLine(screen, 0, 400, 455, 400, 10, color.RGBA{30, 30, 20, 1}, false)
+	vector.StrokeLine(screen, 460, 0, 460, 480, 10, color.RGBA{30, 30, 20, 1}, false)
 
 	// Silicon
 	op3 := ButtonOptions()
-	op3.X = 30
-	op3.Y = 80
-	op3.Xsize = 50
-	op3.Ysize = 50
+	op3.X = 60
+	op3.Y = 160
+	op3.Xsize = 100
+	op3.Ysize = 100
 	op3.Image = SiliconImg
 	if SiliconClicked > 0 {
-		op3.X = 30 - (float64(SiliconClicked))
-		op3.Y = 80 - (float64(SiliconClicked))
-		op3.Xsize = 50 + (float64(SiliconClicked) * 2)
-		op3.Ysize = 50 + (float64(SiliconClicked) * 2)
+		op3.X = 60 - (float64(SiliconClicked))
+		op3.Y = 160 - (float64(SiliconClicked))
+		op3.Xsize = 100 + (float64(SiliconClicked) * 2)
+		op3.Ysize = 100 + (float64(SiliconClicked) * 2)
 	}
 
 	DrawButton(op3, screen)
@@ -698,69 +698,69 @@ func DrawMain(screen *ebiten.Image) {
 
 	// Silicon Stats
 	op2 := &text.DrawOptions{}
-	op2.GeoM.Translate(10, 30)
-	op2.GeoM.Scale(0.5, 0.5)
+	op2.GeoM.Translate(20, 60)
+	op2.GeoM.Scale(1, 1)
 	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon))), face, op2)
-	op2.GeoM.Translate(0, 30)
+	op2.GeoM.Translate(0, 60)
 	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon/Sec: ", large(SiliconRate))), face, op2)
 
 	// Quit
 	op3 = ButtonOptions()
-	op3.X = 10
-	op3.Y = 205
-	op3.Xsize = 85
-	op3.Ysize = 33
+	op3.X = 20
+	op3.Y = 410
+	op3.Xsize = 170
+	op3.Ysize = 66
 	op3.Image = StatBoxImg
 	op3.Text = "Quit"
-	op3.TextSize = 0.7
+	op3.TextSize = 1.4
 	DrawButton(op3, screen)
 
 	// Upgrades
 
 	op3 = ButtonOptions()
-	op3.X = 120
-	op3.Y = 205
-	op3.Xsize = 90
-	op3.Ysize = 33
+	op3.X = 240
+	op3.Y = 410
+	op3.Xsize = 180
+	op3.Ysize = 66
 	op3.Image = StatBoxImg
 	op3.Text = "Upgrades"
-	op3.TextSize = 0.5
+	op3.TextSize = 1
 	DrawButton(op3, screen)
 
 	// Machines
 	for i := 0; i < len(Machines); i++ {
 
 		op3 = ButtonOptions()
-		op3.X = 245
-		op3.Y = float64((i*45)+ScrollState) + 5
-		op3.Xsize = 70
-		op3.Ysize = 45
+		op3.X = 490
+		op3.Y = float64((i*90)+ScrollState) + 10
+		op3.Xsize = 140
+		op3.Ysize = 90
 		op3.Image = Machines[i].Image
 		op3.Tint = Machines[i].Cost > int(Silicon)
 		DrawButton(op3, screen)
 
-		if mouse.X > 245 && mouse.Y > (i*45)+5+ScrollState && mouse.Y < (i*45)+59+ScrollState {
+		if mouse.X > 490 && mouse.Y > (i*90)+10+ScrollState && mouse.Y < (i*90)+118+ScrollState {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(1.5, 2)
-			op.GeoM.Translate(153, 40)
+			op.GeoM.Scale(3, 4)
+			op.GeoM.Translate(306, 80)
 			screen.DrawImage(StatBoxImg, op)
 
 			op2 := &text.DrawOptions{}
-			op2.GeoM.Scale(0.3, 0.3)
-			op2.GeoM.Translate(163, 50)
+			op2.GeoM.Scale(0.6, 0.6)
+			op2.GeoM.Translate(326, 100)
 
 			if Machines[i].name2 != "" {
 				text.Draw(screen, Machines[i].Name, face, op2)
-				op2.GeoM.Translate(0, 15)
+				op2.GeoM.Translate(0, 30)
 				text.Draw(screen, Machines[i].name2, face, op2)
 			} else {
 				text.Draw(screen, Machines[i].Name, face, op2)
 			}
-			op2.GeoM.Translate(0, 15)
+			op2.GeoM.Translate(0, 30)
 			text.Draw(screen, (fmt.Sprintf("%s %s", "Cost: ", large(float32(Machines[i].Cost)))), face, op2)
-			op2.GeoM.Translate(0, 15)
+			op2.GeoM.Translate(0, 30)
 			text.Draw(screen, (fmt.Sprintf("%s %s", "Speed: ", large(Machines[i].Speed))), face, op2)
-			op2.GeoM.Translate(0, 15)
+			op2.GeoM.Translate(0, 30)
 			text.Draw(screen, (fmt.Sprintf("%s %d", "Count: ", Machines[i].Count)), face, op2)
 		}
 	}
@@ -770,8 +770,8 @@ func DrawMain(screen *ebiten.Image) {
 		op3 = ButtonOptions()
 		op3.X = float64(Van.X)
 		op3.Y = float64(Van.Y)
-		op3.Xsize = 54
-		op3.Ysize = 36
+		op3.Xsize = 108
+		op3.Ysize = 72
 		op3.Image = VanImg
 		DrawButton(op3, screen)
 	}
@@ -780,16 +780,16 @@ func DrawMain(screen *ebiten.Image) {
 func SimulateUpgrade(g *Game) error {
 
 	// Scroll Limiter
-	if ScrollState < -200 {
-		ScrollState = -200
+	if ScrollState < -400 {
+		ScrollState = -400
 	}
 
 	// Exit upgrades
 	op3 := ButtonOptions()
-	op3.X = 20
-	op3.Y = 15
-	op3.Xsize = 30
-	op3.Ysize = 30
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 60
+	op3.Ysize = 60
 
 	if TestButton(op3) {
 		state = "Main"
@@ -802,10 +802,10 @@ func SimulateUpgrade(g *Game) error {
 	for i := 0; i < len(Upgrades); i++ {
 		if Upgrades[i].Tier < 5 {
 			op3 = ButtonOptions()
-			op3.X = 50
-			op3.Y = float64((i*30)+ScrollState) + 45
-			op3.Xsize = 25
-			op3.Ysize = 25
+			op3.X = 100
+			op3.Y = float64((i*60)+ScrollState) + 90
+			op3.Xsize = 50
+			op3.Ysize = 50
 
 			if TestButton(op3) {
 				if Silicon >= float32(Upgrades[i].Cost) {
@@ -836,51 +836,51 @@ func DrawUpgrade(screen *ebiten.Image) {
 
 	// Background
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(6, 4)
-	op.GeoM.Translate(20, 20)
+	op.GeoM.Scale(12, 8)
+	op.GeoM.Translate(40, 40)
 	screen.DrawImage(StatBoxImg, op)
 
 	// Silicon readouts
 	op2 := &text.DrawOptions{}
-	op2.GeoM.Translate(170, 10)
-	op2.GeoM.Scale(0.5, 0.5)
+	op2.GeoM.Translate(150, 20)
+	op2.GeoM.Scale(1, 1)
 	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon))), face, op2)
 
 	// Exit upgrades
 	op3 := ButtonOptions()
-	op3.X = 20
-	op3.Y = 15
-	op3.Xsize = 30
-	op3.Ysize = 30
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 60
+	op3.Ysize = 60
 	op3.Text = "X"
-	op3.TextSize = 0.6
+	op3.TextSize = 1.2
 	op3.Image = StatBoxImg
 	DrawButton(op3, screen)
 
 	// Upgrades
 	for i := 0; i < len(Upgrades); i++ {
-		if (i*30)+ScrollState < 140 && (i*30)+ScrollState > -20 {
+		if (i*60)+ScrollState < 140 && (i*60)+ScrollState > -40 {
 			if Upgrades[i].Tier < 5 {
 				op3 = ButtonOptions()
-				op3.X = 50
-				op3.Y = float64((i*30)+ScrollState) + 45
-				op3.Xsize = 25
-				op3.Ysize = 25
+				op3.X = 100
+				op3.Y = float64((i*60)+ScrollState) + 90
+				op3.Xsize = 50
+				op3.Ysize = 50
 				op3.Tint = Upgrades[i].Cost > int(Silicon)
 				op3.Image = Bases[Upgrades[i].Tier]
 				DrawButton(op3, screen)
 				op3.Image = Upgrades[i].Image
 				DrawButton(op3, screen)
 			} else {
-				vector.StrokeLine(screen, 75,
-					float32((i*30)+ScrollState)+55,
-					240, float32((i*30)+ScrollState)+55,
-					2, color.White, false)
+				vector.StrokeLine(screen, 150,
+					float32((i*60)+ScrollState)+110,
+					480, float32((i*60)+ScrollState)+110,
+					4, color.White, false)
 			}
 
 			op2 = &text.DrawOptions{}
-			op2.GeoM.Scale(0.4, 0.4)
-			op2.GeoM.Translate(80, float64((i*30)+ScrollState)+48)
+			op2.GeoM.Scale(0.8, 0.8)
+			op2.GeoM.Translate(160, float64((i*60)+ScrollState)+96)
 			text.Draw(screen, fmt.Sprintf("%s %s %d %s %s", Upgrades[i].Name, " ", Upgrades[i].Tier+1, ", Cost: ", large(float32(Upgrades[i].Cost))), face, op2)
 		}
 	}
