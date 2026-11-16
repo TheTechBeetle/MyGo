@@ -151,10 +151,20 @@ func loadImage(path string) *ebiten.Image {
 }
 
 func (g *Game) Update() error {
+	// Mouse
 	var _, Scroll = ebiten.Wheel()
 	ScrollState += int(Scroll * 10)
 	ScrollState = min(ScrollState, 0)
 
+	// Dev
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowUp) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowLeft) &&
+		ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+		Silicon = Silicon + float32(Machines[len(Machines)-1].Cost)
+	}
+
+	//Silicon/Sec calculation
 	SiliconRate = 0
 	for i := 0; i < len(Machines); i++ {
 		SiliconRate = SiliconRate + float32(Machines[i].Count)*Machines[i].Speed
@@ -163,6 +173,8 @@ func (g *Game) Update() error {
 	mouse.JSTIn = ebiten.IsMouseButtonPressed(ebiten.MouseButton0) && !mouse.In
 	mouse.In = ebiten.IsMouseButtonPressed(ebiten.MouseButton0)
 	mouse.X, mouse.Y = ebiten.CursorPosition()
+
+	// SimSwitch
 	switch state {
 	case "Main":
 		{
@@ -184,6 +196,8 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+
+	// DrawSwitch
 	switch state {
 	case "Main":
 		{
@@ -255,7 +269,6 @@ func main() {
 		loadImage("Assets/Upgrades/Tier3.png"),
 		loadImage("Assets/Upgrades/Tier4.png"),
 		loadImage("Assets/Upgrades/Tier5.png"),
-		loadImage("Assets/Upgrades/MAX.png"),
 	}
 
 	Upgrades = []Upgrade{
@@ -479,12 +492,9 @@ func large(in float32) (out string) {
 
 func SimulateMain(g *Game) error {
 
-	// hack
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) &&
-		ebiten.IsKeyPressed(ebiten.KeyArrowUp) &&
-		ebiten.IsKeyPressed(ebiten.KeyArrowLeft) &&
-		ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		Silicon = Silicon + float32(Machines[len(Machines)-1].Cost)
+	// Scroll Limiter
+	if ScrollState < -250 {
+		ScrollState = -250
 	}
 
 	// Silicon animation progresser
@@ -769,6 +779,11 @@ func DrawMain(screen *ebiten.Image) {
 
 func SimulateUpgrade(g *Game) error {
 
+	// Scroll Limiter
+	if ScrollState < -200 {
+		ScrollState = -200
+	}
+
 	// Exit upgrades
 	op3 := ButtonOptions()
 	op3.X = 20
@@ -829,7 +844,7 @@ func DrawUpgrade(screen *ebiten.Image) {
 	op2 := &text.DrawOptions{}
 	op2.GeoM.Translate(170, 10)
 	op2.GeoM.Scale(0.5, 0.5)
-	text.Draw(screen, (fmt.Sprintf("%s %.2f", "Silicon: ", Silicon)), face, op2)
+	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon))), face, op2)
 
 	// Exit upgrades
 	op3 := ButtonOptions()
@@ -845,24 +860,22 @@ func DrawUpgrade(screen *ebiten.Image) {
 	// Upgrades
 	for i := 0; i < len(Upgrades); i++ {
 		if (i*30)+ScrollState < 140 && (i*30)+ScrollState > -20 {
-
-			op3 = ButtonOptions()
-			op3.X = 50
-			op3.Y = float64((i*30)+ScrollState) + 45
-			op3.Xsize = 25
-			op3.Ysize = 25
-			op3.Tint = Upgrades[i].Cost > int(Silicon)
-
 			if Upgrades[i].Tier < 5 {
+				op3 = ButtonOptions()
+				op3.X = 50
+				op3.Y = float64((i*30)+ScrollState) + 45
+				op3.Xsize = 25
+				op3.Ysize = 25
+				op3.Tint = Upgrades[i].Cost > int(Silicon)
 				op3.Image = Bases[Upgrades[i].Tier]
 				DrawButton(op3, screen)
 				op3.Image = Upgrades[i].Image
 				DrawButton(op3, screen)
 			} else {
-				op3.Image = Bases[0]
-				DrawButton(op3, screen)
-				op3.Image = Bases[5]
-				DrawButton(op3, screen)
+				vector.StrokeLine(screen, 75,
+					float32((i*30)+ScrollState)+55,
+					240, float32((i*30)+ScrollState)+55,
+					2, color.White, false)
 			}
 
 			op2 = &text.DrawOptions{}
