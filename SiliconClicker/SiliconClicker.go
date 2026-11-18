@@ -372,6 +372,62 @@ func main() {
 			10000000,
 			0,
 		},
+		{
+			"Atomic Precision",
+			2,
+			loadImage("Assets/Upgrades/Upgrades/NanoFab.png"),
+			"NanoFab",
+			400000000,
+			0,
+		},
+		{
+			"Neural Optimization",
+			2.5,
+			loadImage("Assets/Upgrades/Upgrades/AI.png"),
+			"AI",
+			2000000000,
+			0,
+		},
+		{
+			"Orbital Logistics",
+			2.5,
+			loadImage("Assets/Upgrades/Upgrades/Orbital.png"),
+			"Orbital",
+			15000000000,
+			0,
+		},
+		{
+			"Matter Reclamation",
+			2.5,
+			loadImage("Assets/Upgrades/Upgrades/Molecular.png"),
+			"Molecular",
+			800000000000,
+			0,
+		},
+		{
+			"Sturdy Circuits",
+			3,
+			loadImage("Assets/Upgrades/Upgrades/Plasma.png"),
+			"Plasma Etcher",
+			4600000000000,
+			0,
+		},
+		{
+			"Shift Cooling",
+			3,
+			loadImage("Assets/Upgrades/Upgrades/Dark.png"),
+			"Dark Silicon",
+			150000000000000,
+			0,
+		},
+		{
+			"Spacetime Routing",
+			3,
+			loadImage("Assets/Upgrades/Upgrades/Void.png"),
+			"Void Core",
+			1000000000000000,
+			0,
+		},
 	}
 
 	Machines = []Machine{
@@ -450,7 +506,7 @@ func main() {
 		{
 			"NanoFab",
 			30000,
-			loadImage("Assets/Machines/Addme"),
+			loadImage("Assets/Machines/NanoFab.png"),
 			10000000,
 			0,
 			"",
@@ -458,48 +514,48 @@ func main() {
 		{
 			"AI Compiler",
 			100000,
-			loadImage("Assets/Machines/Addme"),
+			loadImage("Assets/Machines/AI.png"),
 			100000000,
 			0,
 			"",
 		},
 		{
-			"Orbital Foundry",
+			"Orbital",
 			3500000,
-			loadImage("Assets/Machines/Addme"),
+			loadImage("Assets/Machines/Orbital.png"),
 			1800000000,
 			0,
-			"",
+			"Foundry",
 		},
 		{
 			"Molecular",
-			0, //Setme
-			loadImage("Assets/Machines/Addme"),
-			0, //Setme
+			80000000,
+			loadImage("Assets/Machines/Molecular.png"),
+			50000000000,
 			0,
 			"Assembler",
 		},
 		{
 			"Plasma Etcher",
-			0, //Setme
-			loadImage("Assets/Machines/Addme"),
-			0, //Setme
+			500000000,
+			loadImage("Assets/Machines/Plasma.png"),
+			800000000000,
 			0,
 			"",
 		},
 		{
-			"Dark Silicon Reactor",
-			0, //Setme
-			loadImage("Assets/Machines/Addme"),
-			0, //Setme
+			"Dark Silicon",
+			6000000000,
+			loadImage("Assets/Machines/Dark.png"),
+			20000000000000,
 			0,
-			"",
+			"Reactor",
 		},
 		{
 			"Void Core",
-			0, //Setme
-			loadImage("Assets/Machines/Addme"),
-			0, //Setme
+			40000000000,
+			loadImage("Assets/Machines/Void.png"),
+			1000000000000000,
 			0,
 			"Fabricator",
 		},
@@ -575,8 +631,8 @@ func large(in float32) (out string) {
 func SimulateMain(g *Game) error {
 
 	// Scroll Limiter
-	if ScrollState < -500 {
-		ScrollState = -500
+	if ScrollState < -1000 {
+		ScrollState = -1000
 	}
 
 	// Silicon animation progresser
@@ -609,7 +665,7 @@ func SimulateMain(g *Game) error {
 		SiliconWav.Play()
 		SiliconClicked = 5
 		Particles = append(Particles, Particle{
-			X:       rand.Float32() * 300,
+			X:       rand.Float32() * 250,
 			Y:       0,
 			XVel:    0,
 			YVel:    -0.8,
@@ -695,10 +751,10 @@ func SimulateMain(g *Game) error {
 				Timer:   240,
 				Scale:   6,
 			})
-			Silicon = Silicon * 2
+			Silicon += (SiliconRate * 60)
 			for i := 0; i < 15; i++ {
 				Particles = append(Particles, Particle{
-					X:       rand.Float32() * 100,
+					X:       rand.Float32() * 250,
 					Y:       0,
 					XVel:    0,
 					YVel:    -0.8,
@@ -889,8 +945,8 @@ func DrawMain(screen *ebiten.Image) {
 func SimulateUpgrade(g *Game) error {
 
 	// Scroll Limiter
-	if ScrollState < -400 {
-		ScrollState = -400
+	if ScrollState < -800 {
+		ScrollState = -800
 	}
 
 	// Exit upgrades
