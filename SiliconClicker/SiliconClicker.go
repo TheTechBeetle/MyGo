@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"image/color"
 	"image/png"
 	"math/rand"
@@ -80,14 +81,24 @@ type SaveData struct {
 }
 
 type options struct {
-	X        float64
-	Y        float64
-	Xsize    float64
-	Ysize    float64
-	Text     string
-	Image    *ebiten.Image
-	TextSize float64
-	Tint     bool
+	X           float64
+	Y           float64
+	Xsize       float64
+	Ysize       float64
+	Text        string
+	Image       *ebiten.Image
+	TextSize    float64
+	Tint        bool
+	LeftMargin  float64
+	TopMargin   float64
+	BorderWidth int
+	SideSize    int
+}
+
+type DisectedButton struct {
+	Side   *ebiten.Image
+	Corner *ebiten.Image
+	Center *ebiten.Image
 }
 
 var Particles []Particle
@@ -115,6 +126,7 @@ type Game struct {
 var SiliconImg = loadImage("Assets/Images/Silicon.png")
 var StatBoxImg = loadImage("Assets/Images/StatBox.png")
 var VanImg = loadImage("Assets/Images/Van.png")
+var XbuttonImg = loadImage("Assets/Images/Xbutton.png")
 
 var SiliconWav *audio.Player
 var VanWav *audio.Player
@@ -129,7 +141,7 @@ func loadWav(path string) (*audio.Player, error) {
 	if err != nil {
 		return nil, err
 	}
-	return audio.NewPlayer(audioContext, d)
+	return audioContext.NewPlayer(d)
 }
 
 func loadImage(path string) *ebiten.Image {
@@ -161,7 +173,7 @@ func (g *Game) Update() error {
 		Silicon = Silicon + float32(Machines[len(Machines)-1].Cost)
 	}
 
-	//Silicon/Sec calculation
+	// Silicon/Sec calculation
 	SiliconRate = 0
 	for i := 0; i < len(Machines); i++ {
 		SiliconRate = SiliconRate + float32(Machines[i].Count)*Machines[i].Speed
@@ -244,26 +256,79 @@ var Van VanType
 
 func ButtonOptions() (op options) {
 	return options{
-		Xsize:    100,
-		Ysize:    100,
-		TextSize: 1,
-		Tint:     false,
+		Xsize:       100,
+		Ysize:       100,
+		TextSize:    1,
+		Tint:        false,
+		LeftMargin:  10,
+		TopMargin:   5,
+		BorderWidth: 0,
+		SideSize:    2,
+	}
+}
+func DrawComplexButton(op options, screen *ebiten.Image) {
+	W := op.BorderWidth
+	Button := DisectedButton{
+		op.Image.RecyclableSubImage(image.Rect(W, 0, int(op.Image.Bounds().Dx())-W, W)),
+		op.Image.RecyclableSubImage(image.Rect(0, 0, W, W)),
+		op.Image.RecyclableSubImage(image.Rect(W, W, int(op.Image.Bounds().Dx())-W, int(op.Image.Bounds().Dy())-W)),
+	}
+
+	op2 := &ebiten.DrawImageOptions{}
+	op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W))/float64(op.Image.Bounds().Size().X), (op.Ysize-float64(op.SideSize*W*2))/float64(op.Image.Bounds().Size().Y))
+	op2.GeoM.Translate(op.X, op.Y)
+	op2.GeoM.Translate(float64(W*op.SideSize), float64(W*op.SideSize))
+	screen.DrawImage(Button.Center, op2)
+
+	for i := 0; i < 4; i++ {
+		op2 := &ebiten.DrawImageOptions{}
+		op2.GeoM.Scale(float64(op.SideSize), float64(op.SideSize))
+		op2.GeoM.Rotate(1.57079633 * float64(i))
+		op2.GeoM.Translate(op.X, op.Y)
+		if i == 1 || i == 2 {
+			op2.GeoM.Translate(op.Xsize-float64(op.SideSize*W), 0)
+		}
+		if i == 2 || i == 3 {
+			op2.GeoM.Translate(0, op.Ysize-float64(op.SideSize*W))
+		}
+		screen.DrawImage(Button.Corner, op2)
+
+		op2 = &ebiten.DrawImageOptions{}
+		if i == 1 || i == 3 {
+			op2.GeoM.Scale((op.Ysize-float64(op.SideSize*W*2))/float64(op.Image.Bounds().Size().Y), float64(op.SideSize))
+		} else {
+			op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W))/float64(op.Image.Bounds().Size().X), float64(op.SideSize))
+		}
+		op2.GeoM.Translate(float64(W*op.SideSize), 0)
+		op2.GeoM.Rotate(1.57079633 * float64(i))
+		op2.GeoM.Translate(op.X, op.Y)
+		if i == 1 || i == 2 {
+			op2.GeoM.Translate(op.Xsize-float64(op.SideSize*W), 0)
+		}
+		if i == 2 || i == 3 {
+			op2.GeoM.Translate(0, op.Ysize-float64(op.SideSize*W))
+		}
+		screen.DrawImage(Button.Side, op2)
 	}
 }
 
 func DrawButton(op options, screen *ebiten.Image) {
-	op2 := &ebiten.DrawImageOptions{}
-	op2.GeoM.Scale(op.Xsize/float64(op.Image.Bounds().Size().X), op.Ysize/float64(op.Image.Bounds().Size().Y))
-	op2.GeoM.Translate(op.X, op.Y)
-	if op.Tint {
-		op2.ColorScale.Set(0.5, 0.5, 0.5, 1)
+	if op.BorderWidth == 0 {
+		op2 := &ebiten.DrawImageOptions{}
+		op2.GeoM.Scale(op.Xsize/float64(op.Image.Bounds().Size().X), op.Ysize/float64(op.Image.Bounds().Size().Y))
+		op2.GeoM.Translate(op.X, op.Y)
+		if op.Tint {
+			op2.ColorScale.Set(0.5, 0.5, 0.5, 1)
+		}
+		screen.DrawImage(op.Image, op2)
+	} else {
+		DrawComplexButton(op, screen)
 	}
-	screen.DrawImage(op.Image, op2)
 
 	op3 := &text.DrawOptions{}
 	op3.GeoM.Scale(op.TextSize, op.TextSize)
 	op3.GeoM.Translate(op.X, op.Y)
-	op3.GeoM.Translate(10, 5)
+	op3.GeoM.Translate(op.LeftMargin, op.TopMargin)
 	text.Draw(screen, op.Text, face, op3)
 }
 
@@ -275,22 +340,7 @@ func TestButton(op options) (clicked bool) {
 		(mouse.JSTIn || mouse.In && (ebiten.IsKeyPressed(ebiten.KeyShift))))
 }
 
-func main() {
-	ebiten.SetWindowSize(640, 480)
-	ebiten.SetWindowTitle("SiliconClicker")
-
-	SiliconWav, _ = loadWav("Assets/Sounds/Silicon.wav")
-	VanWav, _ = loadWav("Assets/Sounds/Van.wav")
-	ClickWav, _ = loadWav("Assets/Sounds/Click.wav")
-
-	Bases = []*ebiten.Image{
-		loadImage("Assets/Upgrades/Bases/Tier1.png"),
-		loadImage("Assets/Upgrades/Bases/Tier2.png"),
-		loadImage("Assets/Upgrades/Bases/Tier3.png"),
-		loadImage("Assets/Upgrades/Bases/Tier4.png"),
-		loadImage("Assets/Upgrades/Bases/Tier5.png"),
-	}
-
+func ResetMachines() {
 	Upgrades = []Upgrade{
 		{
 			"NPN Cursor",
@@ -425,7 +475,7 @@ func main() {
 			3,
 			loadImage("Assets/Upgrades/Upgrades/Void.png"),
 			"Void Core",
-			1000000000000000,
+			10000000000000000,
 			0,
 		},
 	}
@@ -560,6 +610,25 @@ func main() {
 			"Fabricator",
 		},
 	}
+}
+
+func main() {
+	ebiten.SetWindowSize(640, 480)
+	ebiten.SetWindowTitle("SiliconClicker")
+
+	SiliconWav, _ = loadWav("Assets/Sounds/Silicon.wav")
+	VanWav, _ = loadWav("Assets/Sounds/Van.wav")
+	ClickWav, _ = loadWav("Assets/Sounds/Click.wav")
+
+	Bases = []*ebiten.Image{
+		loadImage("Assets/Upgrades/Bases/Tier1.png"),
+		loadImage("Assets/Upgrades/Bases/Tier2.png"),
+		loadImage("Assets/Upgrades/Bases/Tier3.png"),
+		loadImage("Assets/Upgrades/Bases/Tier4.png"),
+		loadImage("Assets/Upgrades/Bases/Tier5.png"),
+	}
+
+	ResetMachines()
 
 	var Save, err = LoadGame()
 	if err == nil {
@@ -610,20 +679,20 @@ func LoadGame() (SaveData, error) {
 }
 
 func large(in float32) (out string) {
-	if in > 1000000000000000000 {
+	if in >= 1000000000000000000 {
 		out = "IDUNU"
-	} else if in > 1000000000000000 {
-		out = fmt.Sprintf("%dQ", int(in/1000000000000000))
-	} else if in > 1000000000000 {
-		out = fmt.Sprintf("%dT", int(in/1000000000000))
-	} else if in > 1000000000 {
-		out = fmt.Sprintf("%dB", int(in/1000000000))
-	} else if in > 1000000 {
-		out = fmt.Sprintf("%dM", int(in/1000000))
-	} else if in > 1000 {
-		out = fmt.Sprintf("%dK", int(in/1000))
+	} else if in >= 1000000000000000 {
+		out = fmt.Sprintf("%.1fQ", in/1000000000000000)
+	} else if in >= 1000000000000 {
+		out = fmt.Sprintf("%.1fT", in/1000000000000)
+	} else if in >= 1000000000 {
+		out = fmt.Sprintf("%.1fB", in/1000000000)
+	} else if in >= 1000000 {
+		out = fmt.Sprintf("%.1fM", in/1000000)
+	} else if in >= 1000 {
+		out = fmt.Sprintf("%.1fK", in/1000)
 	} else {
-		out = fmt.Sprintf("%d", int(in))
+		out = fmt.Sprintf("%.1f", in)
 	}
 	return out
 }
@@ -723,7 +792,7 @@ func SimulateMain(g *Game) error {
 	op3.Xsize = 145
 	op3.Ysize = 66
 	if TestButton(op3) {
-		state = "PrestiegeMenu"
+		state = "PrestigeMenu"
 		ScrollState = 0
 		ClickWav.SetPosition(0)
 		ClickWav.Play()
@@ -906,13 +975,13 @@ func DrawMain(screen *ebiten.Image) {
 
 		if mouse.X > 490 && mouse.Y > (i*90)+10+ScrollState && mouse.Y < (i*90)+118+ScrollState {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(3, 4)
-			op.GeoM.Translate(306, 80)
+			op.GeoM.Scale(3.5, 4)
+			op.GeoM.Translate(296, 80)
 			screen.DrawImage(StatBoxImg, op)
 
 			op2 := &text.DrawOptions{}
 			op2.GeoM.Scale(0.6, 0.6)
-			op2.GeoM.Translate(326, 100)
+			op2.GeoM.Translate(316, 100)
 
 			if Machines[i].name2 != "" {
 				text.Draw(screen, Machines[i].Name, face, op2)
@@ -1017,9 +1086,7 @@ func DrawUpgrade(screen *ebiten.Image) {
 	op3.Y = 30
 	op3.Xsize = 60
 	op3.Ysize = 60
-	op3.Text = "X"
-	op3.TextSize = 1.2
-	op3.Image = StatBoxImg
+	op3.Image = XbuttonImg
 	DrawButton(op3, screen)
 
 	// Upgrades
@@ -1052,6 +1119,34 @@ func DrawUpgrade(screen *ebiten.Image) {
 }
 
 func SimulatePrestigeMenu(g *Game) (err error) {
+
+	// Exit prestige
+	op3 := ButtonOptions()
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 90
+	op3.Ysize = 90
+
+	if TestButton(op3) {
+		state = "Main"
+		ScrollState = 0
+		ClickWav.SetPosition(0)
+		ClickWav.Play()
+	}
+
+	// Newgame Button
+	op3 = ButtonOptions()
+	op3.X = 150
+	op3.Y = 30
+	op3.Xsize = 250
+	op3.Ysize = 90
+
+	if TestButton(op3) && ebiten.IsKeyPressed(ebiten.KeyShift) {
+		os.Remove("save.json")
+		ResetMachines()
+		Silicon = 0
+	}
+
 	return nil
 }
 
@@ -1060,7 +1155,43 @@ func SimulatePrestigeTree(g *Game) (err error) {
 }
 
 func DrawPrestigeMenu(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{97, 87, 160, 1})
 
+	// Exit Button
+	op3 := ButtonOptions()
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 90
+	op3.Ysize = 90
+	op3.Image = XbuttonImg
+	DrawButton(op3, screen)
+
+	// Newgame Button
+	op3 = ButtonOptions()
+	op3.X = 150
+	op3.Y = 30
+	op3.Xsize = 250
+	op3.Ysize = 90
+	op3.Image = StatBoxImg
+	op3.Text = "NewGame"
+	op3.TextSize = 1.3
+	op3.LeftMargin = 23
+	op3.TopMargin = 15
+	DrawButton(op3, screen)
+
+	// Readouts
+	op3 = ButtonOptions()
+	op3.X = 30
+	op3.Y = 140
+	op3.Xsize = 350
+	op3.Ysize = 60
+	op3.Image = StatBoxImg
+	op3.Text = (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon)))
+	op3.TextSize = 1
+	op3.LeftMargin = 15
+	op3.TopMargin = 5
+	op3.BorderWidth = 5
+	DrawButton(op3, screen)
 }
 
 func DrawPrestigeTree(screen *ebiten.Image) {
