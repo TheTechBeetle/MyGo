@@ -74,10 +74,23 @@ type VanType struct {
 	Is bool
 }
 
+type Prestiege struct {
+	Brought   bool
+	Cost      int
+	X         float32
+	Y         float32
+	Connected []*Prestiege
+	Image     *ebiten.Image
+	Name      string
+}
+
 type SaveData struct {
-	Silicon  float32
-	Upgrades []Upgrade
-	Machines []Machine
+	Silicon         float32
+	Upgrades        []Upgrade
+	Machines        []Machine
+	Prestiege       []Prestiege
+	PrestiegeCost   int
+	PrestiegeTokens int
 }
 
 type options struct {
@@ -118,6 +131,10 @@ var SiliconClicked int
 var MousePower float32
 
 var ScrollState int
+
+var PrestiegeCost int
+
+var PrestiegeTokens int
 
 type Game struct {
 	face text.Face
@@ -250,6 +267,8 @@ var Machines []Machine
 
 var Upgrades []Upgrade
 
+var Prestieges []Prestiege
+
 var Bases []*ebiten.Image
 
 var Van VanType
@@ -266,6 +285,7 @@ func ButtonOptions() (op options) {
 		SideSize:    2,
 	}
 }
+
 func DrawComplexButton(op options, screen *ebiten.Image) {
 	W := op.BorderWidth
 	Button := DisectedButton{
@@ -275,7 +295,7 @@ func DrawComplexButton(op options, screen *ebiten.Image) {
 	}
 
 	op2 := &ebiten.DrawImageOptions{}
-	op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W))/float64(op.Image.Bounds().Size().X), (op.Ysize-float64(op.SideSize*W*2))/float64(op.Image.Bounds().Size().Y))
+	op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W))/float64(Button.Center.Bounds().Size().X), (op.Ysize-float64(op.SideSize*W*2))/float64(Button.Center.Bounds().Size().Y))
 	op2.GeoM.Translate(op.X, op.Y)
 	op2.GeoM.Translate(float64(W*op.SideSize), float64(W*op.SideSize))
 	screen.DrawImage(Button.Center, op2)
@@ -286,27 +306,27 @@ func DrawComplexButton(op options, screen *ebiten.Image) {
 		op2.GeoM.Rotate(1.57079633 * float64(i))
 		op2.GeoM.Translate(op.X, op.Y)
 		if i == 1 || i == 2 {
-			op2.GeoM.Translate(op.Xsize-float64(op.SideSize*W), 0)
+			op2.GeoM.Translate(op.Xsize, 0)
 		}
 		if i == 2 || i == 3 {
-			op2.GeoM.Translate(0, op.Ysize-float64(op.SideSize*W))
+			op2.GeoM.Translate(0, op.Ysize)
 		}
 		screen.DrawImage(Button.Corner, op2)
 
 		op2 = &ebiten.DrawImageOptions{}
 		if i == 1 || i == 3 {
-			op2.GeoM.Scale((op.Ysize-float64(op.SideSize*W*2))/float64(op.Image.Bounds().Size().Y), float64(op.SideSize))
+			op2.GeoM.Scale((op.Ysize-float64(op.SideSize*W*2))/float64(Button.Side.Bounds().Size().X), float64(op.SideSize))
 		} else {
-			op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W))/float64(op.Image.Bounds().Size().X), float64(op.SideSize))
+			op2.GeoM.Scale((op.Xsize-float64(op.SideSize*W*2))/float64(Button.Side.Bounds().Size().X), float64(op.SideSize))
 		}
 		op2.GeoM.Translate(float64(W*op.SideSize), 0)
 		op2.GeoM.Rotate(1.57079633 * float64(i))
 		op2.GeoM.Translate(op.X, op.Y)
 		if i == 1 || i == 2 {
-			op2.GeoM.Translate(op.Xsize-float64(op.SideSize*W), 0)
+			op2.GeoM.Translate(op.Xsize, 0)
 		}
 		if i == 2 || i == 3 {
-			op2.GeoM.Translate(0, op.Ysize-float64(op.SideSize*W))
+			op2.GeoM.Translate(0, op.Ysize)
 		}
 		screen.DrawImage(Button.Side, op2)
 	}
@@ -633,6 +653,9 @@ func main() {
 	var Save, err = LoadGame()
 	if err == nil {
 		Silicon = Save.Silicon
+		PrestiegeCost = Save.PrestiegeCost
+		PrestiegeTokens = Save.PrestiegeTokens
+		Prestieges = Save.Prestiege
 		for i := range Machines {
 			for _, savedMachine := range Save.Machines {
 				if Machines[i].Name == savedMachine.Name {
@@ -766,6 +789,9 @@ func SimulateMain(g *Game) error {
 			Silicon,
 			Upgrades,
 			Machines,
+			Prestieges,
+			PrestiegeCost,
+			PrestiegeTokens,
 		})
 		return ebiten.Termination
 	}
@@ -935,6 +961,7 @@ func DrawMain(screen *ebiten.Image) {
 	op3.Image = StatBoxImg
 	op3.Text = "Quit"
 	op3.TextSize = 1
+	op3.BorderWidth = 5
 	DrawButton(op3, screen)
 
 	// Upgrades
@@ -947,6 +974,7 @@ func DrawMain(screen *ebiten.Image) {
 	op3.Image = StatBoxImg
 	op3.Text = "Upgrades"
 	op3.TextSize = 0.9
+	op3.BorderWidth = 5
 	DrawButton(op3, screen)
 
 	// Prestiege
@@ -959,6 +987,7 @@ func DrawMain(screen *ebiten.Image) {
 	op3.Image = StatBoxImg
 	op3.Text = "Prestiege"
 	op3.TextSize = 0.9
+	op3.BorderWidth = 5
 	DrawButton(op3, screen)
 
 	// Machines
@@ -1069,10 +1098,15 @@ func DrawUpgrade(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{97, 87, 160, 1})
 
 	// Background
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(12, 8)
-	op.GeoM.Translate(40, 40)
-	screen.DrawImage(StatBoxImg, op)
+	op3 := ButtonOptions()
+	op3.X = 30
+	op3.Y = 20
+	op3.Xsize = 580
+	op3.Ysize = 440
+	op3.Image = StatBoxImg
+	op3.BorderWidth = 10
+	op3.SideSize = 10
+	DrawButton(op3, screen)
 
 	// Silicon readouts
 	op2 := &text.DrawOptions{}
@@ -1081,7 +1115,7 @@ func DrawUpgrade(screen *ebiten.Image) {
 	text.Draw(screen, (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon))), face, op2)
 
 	// Exit upgrades
-	op3 := ButtonOptions()
+	op3 = ButtonOptions()
 	op3.X = 40
 	op3.Y = 30
 	op3.Xsize = 60
@@ -1177,20 +1211,27 @@ func DrawPrestigeMenu(screen *ebiten.Image) {
 	op3.TextSize = 1.3
 	op3.LeftMargin = 23
 	op3.TopMargin = 15
+	op3.BorderWidth = 5
 	DrawButton(op3, screen)
 
 	// Readouts
 	op3 = ButtonOptions()
 	op3.X = 30
-	op3.Y = 140
 	op3.Xsize = 350
 	op3.Ysize = 60
 	op3.Image = StatBoxImg
-	op3.Text = (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon)))
 	op3.TextSize = 1
 	op3.LeftMargin = 15
 	op3.TopMargin = 5
 	op3.BorderWidth = 5
+	op3.Text = (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon)))
+	op3.Y = 140
+	DrawButton(op3, screen)
+	op3.Text = (fmt.Sprintf("%s %s", "Tokens: ", large(float32(PrestiegeTokens))))
+	op3.Y = 210
+	DrawButton(op3, screen)
+	op3.Text = (fmt.Sprintf("%s %s", "Next Cost: ", large(float32(PrestiegeCost))))
+	op3.Y = 280
 	DrawButton(op3, screen)
 }
 
