@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"math/rand"
 	"os"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -74,23 +75,26 @@ type VanType struct {
 	Is bool
 }
 
-type Prestiege struct {
-	Brought   bool
-	Cost      int
-	X         float32
-	Y         float32
-	Connected []*Prestiege
-	Image     *ebiten.Image
-	Name      string
+type Prestige struct {
+	Brought     bool
+	Cost        int
+	X           float32
+	Y           float32
+	Connected   string
+	Image       *ebiten.Image
+	Name        string
+	Description string
+	Base        int
 }
 
 type SaveData struct {
-	Silicon         float32
-	Upgrades        []Upgrade
-	Machines        []Machine
-	Prestiege       []Prestiege
-	PrestiegeCost   int
-	PrestiegeTokens int
+	Silicon        float32
+	Upgrades       []Upgrade
+	Machines       []Machine
+	Prestige       []Prestige
+	PrestigeCost   int
+	PrestigeTokens int
+	Savetime       time.Time
 }
 
 type options struct {
@@ -106,6 +110,14 @@ type options struct {
 	TopMargin   float64
 	BorderWidth int
 	SideSize    int
+	Hover       bool
+}
+
+type prestigeBoosts struct {
+	Total    int
+	Prestige int
+	auto     int
+	afk      float32
 }
 
 type DisectedButton struct {
@@ -132,9 +144,11 @@ var MousePower float32
 
 var ScrollState int
 
-var PrestiegeCost int
+var PrestigeCost int
 
-var PrestiegeTokens int
+var PrestigeTokens int
+
+var AFKswitch bool
 
 type Game struct {
 	face text.Face
@@ -142,6 +156,8 @@ type Game struct {
 
 var SiliconImg = loadImage("Assets/Images/Silicon.png")
 var StatBoxImg = loadImage("Assets/Images/StatBox.png")
+var BroughtImg = loadImage("Assets/Prestige/Brought.png")
+var UnBroughtImg = loadImage("Assets/Prestige/Unbrought.png")
 var VanImg = loadImage("Assets/Images/Van.png")
 var XbuttonImg = loadImage("Assets/Images/Xbutton.png")
 
@@ -176,11 +192,72 @@ func loadImage(path string) *ebiten.Image {
 	return ebiten.NewImageFromImage(img)
 }
 
+func BoostCase(boost string) bool {
+	for i := 0; i < len(Prestiges); i++ {
+		if Prestiges[i].Brought && Prestiges[i].Name == boost {
+			return true
+		}
+	}
+	return false
+}
+
+var boosts prestigeBoosts
+
+func Calcrates() {
+	boosts = prestigeBoosts{}
+
+	// Boosts
+	boosts.Total++
+	if BoostCase("Mult 1") {
+		boosts.Total += 1
+	}
+	if BoostCase("Mult 2") {
+		boosts.Total += 2
+	}
+	if BoostCase("Mult 3") {
+		boosts.Total += 3
+	}
+
+	boosts.Prestige++
+	if BoostCase("Tokens 1") {
+		boosts.Prestige += 1
+	}
+	if BoostCase("Tokens 2") {
+		boosts.Prestige += 2
+	}
+	if BoostCase("Tokens 3") {
+		boosts.Prestige += 3
+	}
+
+	if BoostCase("AFK 1") {
+		boosts.afk += 0.05
+	}
+	if BoostCase("AFK 2") {
+		boosts.afk += 0.1
+	}
+	if BoostCase("AFK 3") {
+		boosts.afk += 0.2
+	}
+
+	// Silicon/Sec calculation
+	SiliconRate = 0
+	for i := 0; i < len(Machines); i++ {
+		SiliconRate = SiliconRate + float32(Machines[i].Count)*Machines[i].Speed
+	}
+	SiliconRate = SiliconRate * float32(boosts.Total)
+	Silicon = Silicon + (SiliconRate / 60)
+
+}
+
 func (g *Game) Update() error {
 	// Mouse
 	var _, Scroll = ebiten.Wheel()
 	ScrollState += int(Scroll * 30)
 	ScrollState = min(ScrollState, 0)
+
+	mouse.JSTIn = ebiten.IsMouseButtonPressed(ebiten.MouseButton0) && !mouse.In
+	mouse.In = ebiten.IsMouseButtonPressed(ebiten.MouseButton0)
+	mouse.X, mouse.Y = ebiten.CursorPosition()
 
 	// Dev
 	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) &&
@@ -189,16 +266,7 @@ func (g *Game) Update() error {
 		ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
 		Silicon = Silicon + float32(Machines[len(Machines)-1].Cost)
 	}
-
-	// Silicon/Sec calculation
-	SiliconRate = 0
-	for i := 0; i < len(Machines); i++ {
-		SiliconRate = SiliconRate + float32(Machines[i].Count)*Machines[i].Speed
-	}
-	Silicon = Silicon + (SiliconRate / 60)
-	mouse.JSTIn = ebiten.IsMouseButtonPressed(ebiten.MouseButton0) && !mouse.In
-	mouse.In = ebiten.IsMouseButtonPressed(ebiten.MouseButton0)
-	mouse.X, mouse.Y = ebiten.CursorPosition()
+	Calcrates()
 
 	// SimSwitch
 	switch state {
@@ -267,9 +335,11 @@ var Machines []Machine
 
 var Upgrades []Upgrade
 
-var Prestieges []Prestiege
+var Prestiges []Prestige
 
 var Bases []*ebiten.Image
+
+var PBases []*ebiten.Image
 
 var Van VanType
 
@@ -333,16 +403,18 @@ func DrawComplexButton(op options, screen *ebiten.Image) {
 }
 
 func DrawButton(op options, screen *ebiten.Image) {
-	if op.BorderWidth == 0 {
-		op2 := &ebiten.DrawImageOptions{}
-		op2.GeoM.Scale(op.Xsize/float64(op.Image.Bounds().Size().X), op.Ysize/float64(op.Image.Bounds().Size().Y))
-		op2.GeoM.Translate(op.X, op.Y)
-		if op.Tint {
-			op2.ColorScale.Set(0.5, 0.5, 0.5, 1)
+	if op.Image != nil {
+		if op.BorderWidth == 0 {
+			op2 := &ebiten.DrawImageOptions{}
+			op2.GeoM.Scale(op.Xsize/float64(op.Image.Bounds().Size().X), op.Ysize/float64(op.Image.Bounds().Size().Y))
+			op2.GeoM.Translate(op.X, op.Y)
+			if op.Tint {
+				op2.ColorScale.Set(0.5, 0.5, 0.5, 1)
+			}
+			screen.DrawImage(op.Image, op2)
+		} else {
+			DrawComplexButton(op, screen)
 		}
-		screen.DrawImage(op.Image, op2)
-	} else {
-		DrawComplexButton(op, screen)
 	}
 
 	op3 := &text.DrawOptions{}
@@ -357,10 +429,10 @@ func TestButton(op options) (clicked bool) {
 		mouse.X < int(op.X+(op.Xsize)) &&
 		mouse.Y > int(op.Y) &&
 		mouse.Y < int(op.Y+(op.Ysize)) &&
-		(mouse.JSTIn || mouse.In && (ebiten.IsKeyPressed(ebiten.KeyShift))))
+		(op.Hover || (mouse.JSTIn || mouse.In && (ebiten.IsKeyPressed(ebiten.KeyShift)))))
 }
 
-func ResetMachines() {
+func ResetMachines(Full bool) {
 	Upgrades = []Upgrade{
 		{
 			"NPN Cursor",
@@ -630,6 +702,142 @@ func ResetMachines() {
 			"Fabricator",
 		},
 	}
+	if Full {
+		Prestiges = []Prestige{
+			{
+				false,
+				15,
+				420,
+				100,
+				"Auto Buy",
+				loadImage("Assets/Prestige/Prestige/Buy.png"),
+				"AFK Buy",
+				"",
+				3,
+			},
+			{
+				false,
+				6,
+				420,
+				200,
+				"AFK 1",
+				loadImage("Assets/Prestige/Prestige/Buy.png"),
+				"Auto Buy",
+				"",
+				2,
+			},
+			{
+				false,
+				10,
+				340,
+				100,
+				"AFK 2",
+				loadImage("Assets/Prestige/Prestige/AFK.png"),
+				"AFK 3",
+				"+20% Ofline prod",
+				3,
+			},
+			{
+				false,
+				5,
+				340,
+				200,
+				"AFK 1",
+				loadImage("Assets/Prestige/Prestige/AFK.png"),
+				"AFK 2",
+				"+10% Ofline prod",
+				2,
+			},
+			{
+				false,
+				2,
+				340,
+				300,
+				"Origin",
+				loadImage("Assets/Prestige/Prestige/AFK.png"),
+				"AFK 1",
+				"+5% Ofline prod",
+				1,
+			},
+			{
+				false,
+				10,
+				200,
+				100,
+				"Mult 2",
+				loadImage("Assets/Prestige/Prestige/Mult.png"),
+				"Mult 3",
+				"+3 Silicon mult",
+				3,
+			},
+			{
+				false,
+				5,
+				200,
+				200,
+				"Mult 1",
+				loadImage("Assets/Prestige/Prestige/Mult.png"),
+				"Mult 2",
+				"+2 Silicon mult",
+				2,
+			},
+			{
+				false,
+				2,
+				200,
+				300,
+				"Origin",
+				loadImage("Assets/Prestige/Prestige/Mult.png"),
+				"Mult 1",
+				"+1 Silicon mult",
+				1,
+			},
+			{
+				false,
+				8,
+				270,
+				100,
+				"Tokens 2",
+				loadImage("Assets/Prestige/Prestige/Tokens.png"),
+				"Tokens 3",
+				"+3 tokens/prestige",
+				3,
+			},
+			{
+				false,
+				3,
+				270,
+				200,
+				"Tokens 1",
+				loadImage("Assets/Prestige/Prestige/Tokens.png"),
+				"Tokens 2",
+				"+2 tokens/prestige",
+				2,
+			},
+			{
+				false,
+				1,
+				270,
+				300,
+				"Origin",
+				loadImage("Assets/Prestige/Prestige/Tokens.png"),
+				"Tokens 1",
+				"+1 tokens/prestige",
+				1,
+			},
+			{
+				true,
+				1,
+				270,
+				400,
+				"",
+				nil,
+				"Origin",
+				"",
+				0,
+			},
+		}
+	}
 }
 
 func main() {
@@ -648,36 +856,78 @@ func main() {
 		loadImage("Assets/Upgrades/Bases/Tier5.png"),
 	}
 
-	ResetMachines()
+	PBases = []*ebiten.Image{
+		loadImage("Assets/Prestige/Bases/Base1.png"),
+		loadImage("Assets/Prestige/Bases/Base2.png"),
+		loadImage("Assets/Prestige/Bases/Base3.png"),
+	}
+
+	PrestigeCost = 100000000
+
+	ResetMachines(true)
 
 	var Save, err = LoadGame()
 	if err == nil {
 		Silicon = Save.Silicon
-		PrestiegeCost = Save.PrestiegeCost
-		PrestiegeTokens = Save.PrestiegeTokens
-		Prestieges = Save.Prestiege
-		for i := range Machines {
-			for _, savedMachine := range Save.Machines {
-				if Machines[i].Name == savedMachine.Name {
-					Machines[i].Count = savedMachine.Count
-					Machines[i].Cost = savedMachine.Cost
-					Machines[i].Speed = savedMachine.Speed
-					break
-				}
+		PrestigeCost = Save.PrestigeCost
+		PrestigeTokens = Save.PrestigeTokens
+		if len(Machines) == len(Save.Machines) {
+			for i := range Machines {
+				Machines[i].Count = Save.Machines[i].Count
+				Machines[i].Speed = Save.Machines[i].Speed
+				Machines[i].Cost = Save.Machines[i].Cost
 			}
 		}
-		for i := range Upgrades {
-			for _, savedUpgrade := range Save.Upgrades {
-				if Upgrades[i].Name == savedUpgrade.Name {
-					Upgrades[i].Tier = savedUpgrade.Tier
-					Upgrades[i].Cost = savedUpgrade.Cost
-					break
-				}
+		if len(Upgrades) == len(Save.Upgrades) {
+			for i := range Upgrades {
+				Upgrades[i].Tier = Save.Upgrades[i].Tier
+				Upgrades[i].Cost = Save.Upgrades[i].Cost
 			}
+		}
+		if len(Upgrades) == len(Save.Upgrades) {
+			for i := range Prestiges {
+				Prestiges[i].Brought = Save.Prestige[i].Brought
+			}
+		}
+		if AFKswitch {
+			Calcrates()
+			DoAFK(time.Since(Save.Savetime).Seconds())
 		}
 	}
 
 	ebiten.RunGame(&Game{})
+}
+
+func DoAFK(duration float64) {
+	if !BoostCase("AFK Buy") {
+		Silicon += SiliconRate * boosts.afk * float32(duration)
+		return
+	}
+
+	var i = 0
+	for i = len(Machines) - 1; i > 0 && Machines[i].Count == 0; i -= 1 {
+	}
+
+	Machine := &Machines[i]
+	remaining := duration
+	SiliconRate := SiliconRate * boosts.afk
+	for remaining > 0 {
+		if Silicon >= float32(Machine.Cost) {
+			Silicon -= float32(Machine.Cost)
+			Machine.Count++
+			Machine.Cost = int(float32(Machine.Cost) * 1.2)
+			SiliconRate += float32(Machine.Speed) *
+				float32(boosts.Total) *
+				float32(boosts.afk)
+		}
+		wait := (float32(Machine.Cost) - Silicon) / SiliconRate
+		if float64(wait) > remaining {
+			Silicon += SiliconRate * float32(remaining)
+			break
+		}
+		Silicon += SiliconRate * wait
+		remaining -= float64(wait)
+	}
 }
 
 func SaveGame(state SaveData) error {
@@ -722,6 +972,18 @@ func large(in float32) (out string) {
 
 func SimulateMain(g *Game) error {
 
+	// Auto buy
+	if BoostCase("Auto Buy") && AFKswitch {
+		var i = 0
+		for i = len(Machines) - 1; i > 0 && Machines[i].Count == 0; i -= 1 {
+		}
+		if Silicon >= float32(Machines[i].Cost) {
+			Silicon -= float32(Machines[i].Cost)
+			Machines[i].Count++
+			Machines[i].Cost = int(float32(Machines[i].Cost) * 1.2)
+		}
+	}
+
 	// Scroll Limiter
 	if ScrollState < -1000 {
 		ScrollState = -1000
@@ -752,7 +1014,7 @@ func SimulateMain(g *Game) error {
 	op3.Xsize = 100
 	op3.Ysize = 100
 	if TestButton(op3) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		Silicon += float32((Upgrades[0].Tier + 1) * (Upgrades[0].Tier + 1))
+		Silicon += float32((Upgrades[0].Tier + 1) * (Upgrades[0].Tier + 1) * boosts.Total)
 		SiliconWav.SetPosition(0)
 		SiliconWav.Play()
 		SiliconClicked = 5
@@ -773,7 +1035,7 @@ func SimulateMain(g *Game) error {
 			Gravity: 0.04,
 			Timer:   60,
 			Scale:   1,
-			Text:    fmt.Sprintf("+%d", (Upgrades[0].Tier+1)*(Upgrades[0].Tier+1)),
+			Text:    fmt.Sprintf("+%d", (Upgrades[0].Tier+1)*(Upgrades[0].Tier+1)*boosts.Total),
 		})
 	}
 
@@ -783,15 +1045,15 @@ func SimulateMain(g *Game) error {
 	op3.Y = 410
 	op3.Xsize = 85
 	op3.Ysize = 66
-
 	if TestButton(op3) {
 		SaveGame(SaveData{
 			Silicon,
 			Upgrades,
 			Machines,
-			Prestieges,
-			PrestiegeCost,
-			PrestiegeTokens,
+			Prestiges,
+			PrestigeCost,
+			PrestigeTokens,
+			time.Now(),
 		})
 		return ebiten.Termination
 	}
@@ -810,7 +1072,7 @@ func SimulateMain(g *Game) error {
 		ClickWav.Play()
 	}
 
-	// Prestiege
+	// Prestige
 
 	op3 = ButtonOptions()
 	op3.X = 305
@@ -872,7 +1134,7 @@ func SimulateMain(g *Game) error {
 
 		if TestButton(op3) {
 			if Silicon >= float32(Machines[i].Cost) {
-				if Machines[i].Name == "Assembler" && Machines[i].Count == 0 {
+				if i == len(Machines) && Machines[i].Count == 0 {
 					VanWav.SetPosition(0)
 					VanWav.Play()
 				} else {
@@ -977,7 +1239,7 @@ func DrawMain(screen *ebiten.Image) {
 	op3.BorderWidth = 5
 	DrawButton(op3, screen)
 
-	// Prestiege
+	// Prestige
 
 	op3 = ButtonOptions()
 	op3.X = 305
@@ -985,7 +1247,7 @@ func DrawMain(screen *ebiten.Image) {
 	op3.Xsize = 145
 	op3.Ysize = 66
 	op3.Image = StatBoxImg
-	op3.Text = "Prestiege"
+	op3.Text = "Prestige"
 	op3.TextSize = 0.9
 	op3.BorderWidth = 5
 	DrawButton(op3, screen)
@@ -1000,9 +1262,10 @@ func DrawMain(screen *ebiten.Image) {
 		op3.Ysize = 90
 		op3.Image = Machines[i].Image
 		op3.Tint = Machines[i].Cost > int(Silicon)
+		op3.Hover = true
 		DrawButton(op3, screen)
 
-		if mouse.X > 490 && mouse.Y > (i*90)+10+ScrollState && mouse.Y < (i*90)+118+ScrollState {
+		if TestButton(op3) {
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(3.5, 4)
 			op.GeoM.Translate(296, 80)
@@ -1153,6 +1416,19 @@ func DrawUpgrade(screen *ebiten.Image) {
 }
 
 func SimulatePrestigeMenu(g *Game) (err error) {
+	// Particles
+	for i := 0; i < len(Particles); i++ {
+		var Thisparticle = &Particles[i]
+
+		Thisparticle.X = Thisparticle.X + Thisparticle.XVel
+		Thisparticle.Y = Thisparticle.Y + Thisparticle.YVel
+
+		Thisparticle.Timer = Thisparticle.Timer - 1
+		Thisparticle.YVel = Thisparticle.YVel + Thisparticle.Gravity
+		if Thisparticle.Timer <= 0 || Thisparticle.Y > 640 {
+			Particles = append(Particles[:i], Particles[i+1:]...)
+		}
+	}
 
 	// Exit prestige
 	op3 := ButtonOptions()
@@ -1177,14 +1453,93 @@ func SimulatePrestigeMenu(g *Game) (err error) {
 
 	if TestButton(op3) && ebiten.IsKeyPressed(ebiten.KeyShift) {
 		os.Remove("save.json")
-		ResetMachines()
+		ResetMachines(true)
 		Silicon = 0
+		PrestigeCost = 100000000
+		PrestigeTokens = 0
+	}
+
+	// Buttons
+	op3 = ButtonOptions()
+	op3.X = 400
+	op3.Xsize = 200
+	op3.Ysize = 80
+	op3.Image = StatBoxImg
+	op3.TextSize = 1.2
+	op3.LeftMargin = 15
+	op3.TopMargin = 5
+	op3.BorderWidth = 5
+	op3.Text = "Prestige"
+	op3.Y = 150
+	if TestButton(op3) {
+		if PrestigeCost < int(Silicon) {
+			ResetMachines(false)
+			Silicon = 0
+			PrestigeCost = int(float32(PrestigeCost+50000000) * 1.5)
+			PrestigeTokens += boosts.Prestige
+			Particles = append(Particles, Particle{
+				X:       -50,
+				Y:       -600,
+				XVel:    0,
+				YVel:    8,
+				Image:   SiliconImg,
+				Gravity: 0,
+				Timer:   360,
+				Scale:   15,
+			})
+		}
+	} else {
+		op3.Text = "Upgrades"
+		op3.Y = 240
+		if TestButton(op3) {
+			state = "PrestigeTree"
+		} else {
+			op3.Y = 330
+			if TestButton(op3) {
+				AFKswitch = !AFKswitch
+			}
+		}
 	}
 
 	return nil
 }
 
 func SimulatePrestigeTree(g *Game) (err error) {
+
+	// Exit tree
+	op3 := ButtonOptions()
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 90
+	op3.Ysize = 90
+
+	if TestButton(op3) {
+		state = "PrestigeMenu"
+		ScrollState = 0
+		ClickWav.SetPosition(0)
+		ClickWav.Play()
+	}
+
+	for i := 0; i < len(Prestiges); i++ {
+		for i2 := 0; i2 < len(Prestiges); i2++ {
+			if (Prestiges[i2].Name == Prestiges[i].Connected && Prestiges[i2].Brought) || Prestiges[i].Connected == "" {
+
+				op3 := ButtonOptions()
+				op3.X = float64(Prestiges[i].X)
+				op3.Y = float64(Prestiges[i].Y)
+				op3.Xsize = 50
+				op3.Ysize = 50
+
+				if TestButton(op3) && Prestiges[i].Cost <= PrestigeTokens && !Prestiges[i].Brought {
+					PrestigeTokens = PrestigeTokens - Prestiges[i].Cost
+					Prestiges[i].Brought = true
+					VanWav.SetPosition(0)
+					VanWav.Play()
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -1227,14 +1582,118 @@ func DrawPrestigeMenu(screen *ebiten.Image) {
 	op3.Text = (fmt.Sprintf("%s %s", "Silicon: ", large(Silicon)))
 	op3.Y = 140
 	DrawButton(op3, screen)
-	op3.Text = (fmt.Sprintf("%s %s", "Tokens: ", large(float32(PrestiegeTokens))))
+	op3.Text = (fmt.Sprintf("%s %s", "Tokens: ", large(float32(PrestigeTokens))))
 	op3.Y = 210
 	DrawButton(op3, screen)
-	op3.Text = (fmt.Sprintf("%s %s", "Next Cost: ", large(float32(PrestiegeCost))))
+	op3.Text = (fmt.Sprintf("%s %s", "Next Cost: ", large(float32(PrestigeCost))))
 	op3.Y = 280
 	DrawButton(op3, screen)
+
+	// Buttons
+	op3 = ButtonOptions()
+	op3.X = 400
+	op3.Xsize = 200
+	op3.Ysize = 80
+	op3.Image = StatBoxImg
+	op3.TextSize = 1.2
+	op3.LeftMargin = 15
+	op3.TopMargin = 5
+	op3.BorderWidth = 5
+	op3.Text = "Prestige"
+	op3.Y = 150
+	DrawButton(op3, screen)
+
+	op3.Text = "Upgrades"
+	op3.Y = 240
+	DrawButton(op3, screen)
+	drawParticles(screen)
+
+	op3.Text = fmt.Sprintf("%s %t", "AFK:", AFKswitch)
+	op3.Y = 330
+	DrawButton(op3, screen)
+	drawParticles(screen)
 }
 
 func DrawPrestigeTree(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{50, 40, 30, 1})
 
+	// Token readouts
+	op2 := &text.DrawOptions{}
+	op2.GeoM.Translate(150, 20)
+	op2.GeoM.Scale(1, 1)
+	text.Draw(screen, (fmt.Sprintf("%s %s", "Tokens: ", large(float32(PrestigeTokens)))), face, op2)
+
+	// Exit Button
+	op3 := ButtonOptions()
+	op3.X = 40
+	op3.Y = 30
+	op3.Xsize = 90
+	op3.Ysize = 90
+	op3.Image = XbuttonImg
+	DrawButton(op3, screen)
+
+	// Upgrades
+	var temp int = -1
+	for i := 0; i < len(Prestiges); i++ {
+		for i2 := 0; i2 < len(Prestiges); i2++ {
+			if (Prestiges[i2].Name == Prestiges[i].Connected && Prestiges[i2].Brought) || Prestiges[i].Connected == "" {
+				if Prestiges[i].Connected != "" {
+					vector.StrokeLine(screen, Prestiges[i].X+25, Prestiges[i].Y+25, Prestiges[i2].X+25, Prestiges[i2].Y+25, 5, color.RGBA{250, 250, 50, 1}, true)
+				}
+
+				op3 := ButtonOptions()
+				op3.X = float64(Prestiges[i].X)
+				op3.Y = float64(Prestiges[i].Y)
+				op3.Xsize = 50
+				op3.Ysize = 50
+				op3.Hover = true
+				op3.Tint = !(Prestiges[i].Cost <= PrestigeTokens)
+				if Prestiges[i].Brought {
+					op3.Tint = true
+					op3.Image = BroughtImg
+				} else {
+					op3.Image = UnBroughtImg
+				}
+				DrawButton(op3, screen)
+				if Prestiges[i].Base != 0 {
+					op3.Image = PBases[Prestiges[i].Base-1]
+					DrawButton(op3, screen)
+				}
+				op3.Image = Prestiges[i].Image
+				DrawButton(op3, screen)
+
+				// Stats
+				if TestButton(op3) {
+					temp = i
+
+				}
+			}
+		}
+	}
+	if temp != -1 {
+		op3 = ButtonOptions()
+		op3.X = 210
+		op3.Y = 165
+		op3.Xsize = 300
+		op3.Ysize = 150
+		op3.Image = StatBoxImg
+		op3.BorderWidth = 5
+
+		op3.Text = Prestiges[temp].Name
+		op3.TopMargin = 6
+		DrawButton(op3, screen)
+
+		op3.Image = nil
+		op3.TopMargin = 40
+		if Prestiges[temp].Brought {
+			op3.Text = "Brought"
+		} else {
+			op3.Text = fmt.Sprintf("%s%d", "Cost: ", Prestiges[temp].Cost)
+		}
+		DrawButton(op3, screen)
+
+		op3.Text = Prestiges[temp].Description
+		op3.TopMargin = 85
+		DrawButton(op3, screen)
+	}
 }
