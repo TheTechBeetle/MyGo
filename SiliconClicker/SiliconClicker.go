@@ -161,6 +161,7 @@ var BroughtImg = loadImage("Assets/Prestige/Brought.png")
 var UnBroughtImg = loadImage("Assets/Prestige/Unbrought.png")
 var VanImg = loadImage("Assets/Images/Van.png")
 var XbuttonImg = loadImage("Assets/Images/Xbutton.png")
+var ShiftImg = loadImage("Assets/Images/Shift.png")
 
 var SiliconWav *audio.Player
 var VanWav *audio.Player
@@ -710,7 +711,7 @@ func ResetMachines(Full bool) {
 				15,
 				420,
 				100,
-				"Auto Buy",
+				"AFK 3",
 				loadImage("Assets/Prestige/Prestige/Buy.png"),
 				"AFK Buy",
 				"",
@@ -1566,7 +1567,7 @@ func DrawPrestigeMenu(screen *ebiten.Image) {
 	op3 = ButtonOptions()
 	op3.X = 150
 	op3.Y = 30
-	op3.Xsize = 250
+	op3.Xsize = 260
 	op3.Ysize = 90
 	op3.Image = StatBoxImg
 	op3.Text = "NewGame"
@@ -1574,6 +1575,15 @@ func DrawPrestigeMenu(screen *ebiten.Image) {
 	op3.LeftMargin = 23
 	op3.TopMargin = 15
 	op3.BorderWidth = 5
+	DrawButton(op3, screen)
+
+	op3.X = 370
+	op3.Y = 50
+	op3.Xsize = 30
+	op3.Ysize = 40
+	op3.Image = ShiftImg
+	op3.Text = ""
+	op3.BorderWidth = 0
 	DrawButton(op3, screen)
 
 	// Readouts
