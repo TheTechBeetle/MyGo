@@ -901,6 +901,9 @@ func main() {
 }
 
 func DoAFK(duration float64) {
+	if time.Duration(duration) > 172800 {
+		duration = 172800
+	}
 	if !BoostCase("AFK Buy") {
 		Silicon += SiliconRate * boosts.afk * float32(duration)
 		return
