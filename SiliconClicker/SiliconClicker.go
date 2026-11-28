@@ -95,6 +95,7 @@ type SaveData struct {
 	PrestigeCost   int
 	PrestigeTokens int
 	Savetime       time.Time
+	AFK            bool
 }
 
 type options struct {
@@ -871,6 +872,7 @@ func main() {
 		Silicon = Save.Silicon
 		PrestigeCost = Save.PrestigeCost
 		PrestigeTokens = Save.PrestigeTokens
+		AFKswitch = Save.AFK
 		if len(Machines) == len(Save.Machines) {
 			for i := range Machines {
 				Machines[i].Count = Save.Machines[i].Count
@@ -1054,6 +1056,7 @@ func SimulateMain(g *Game) error {
 			PrestigeCost,
 			PrestigeTokens,
 			time.Now(),
+			AFKswitch,
 		})
 		return ebiten.Termination
 	}
